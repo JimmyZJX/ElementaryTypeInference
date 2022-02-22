@@ -1,0 +1,1461 @@
+Import "nonOverlap".
+
+Define sub_stable : olist -> ty -> ty -> prop by
+	sub_stable E A A := wft E A;
+	sub_stable E A top := wft E A;
+	sub_stable E bot A := wft E A;
+	sub_stable E (arrow A1 A2) (arrow B1 B2) := sub_stable E B1 A1 /\ sub_stable E A2 B2;
+	sub_stable E (all A) B := exists m, sub_stable E (A m) B /\ mono E m /\ notAll_ B;
+	sub_stable E (all A) (all B) := (forall C, wft E C -> sub_stable E (A C) (B C)).
+
+% Well-formness-alt ...
+% Define wft_stable : olist -> ty -> prop by
+% 	wft_stable E i;
+% 	wft_stable E top;
+% 	wft_stable E bot;
+% 	nabla x, wft_stable (E x) x := nabla x, member (tyvar x) (E x);
+% 	nabla x, wft_stable (E x) x := nabla x, member (styvar x) (E x);
+% 	wft_stable E (arrow A B) := wft_stable E A /\ wft_stable E B;
+% 	wft_stable E (all A) := nabla x, wft_stable (tyvar x :: E) (A x).
+
+
+% (L, E, A) => A'
+Define inst_list : olist -> olist -> ty -> ty -> prop by
+	inst_list nil E A A;
+	nabla x, inst_list (tyvar x :: L) E (A x) B := exists m, mono E m /\ inst_list L E (A m) B.
+
+Define tyvar_list : olist -> olist -> prop by
+	tyvar_list nil E;
+	nabla x, tyvar_list (tyvar x :: L) E := tyvar_list L E.
+
+
+Theorem inst_list_i_det : forall L E Ai, inst_list L E i Ai -> Ai = i.
+induction on 1. intros. case H1. search. applys IH. search.
+Theorem inst_list_top_det : forall L E Ai, inst_list L E top Ai -> Ai = top.
+induction on 1. intros. case H1. search. applys IH. search.
+Theorem inst_list_bot_det : forall L E Ai, inst_list L E bot Ai -> Ai = bot.
+induction on 1. intros. case H1. search. applys IH. search.
+Theorem inst_list_bot : forall L E, tyvar_list L E -> inst_list L E bot bot.
+induction on 1. intros. case H1. search. applys IH with E = E. search.
+Theorem inst_list_ty_det : forall L E Ai, nabla a, inst_list L (E a) a (Ai a) -> Ai = z\ z.
+induction on 1. intros. case H1. search. applys IH. search.
+Theorem inst_list_ty_E : forall L E, nabla a,
+	tyvar_list L (E a) -> inst_list L (E a) a a.
+induction on 1. intros. case H1. search.
+	applys IH. search.
+Theorem inst_list_sty_det : forall L E LE Ai, nabla a,
+	inst_list (L a) (E a) a (Ai a) ->
+	append (L a) (E a) (LE a) -> member (styvar a) (LE a) ->
+	Ai = z\ z /\ member (styvar a) (E a) /\ exists Lr, L = x\ Lr.
+induction on 1. intros. case H1 (keep).
+	case H2. search.
+	A: case H2. M: case H3. applys IH. search.
+	A: case H2. M: case H3. applys append_prune_AB A.
+		applys member_prune M.
+
+Theorem inst_list_mono : forall L E m,
+	tyvar_list L E -> mono E m -> inst_list L E m m.
+induction on 1. intros. case H1. search.
+	applys mono_prune H2. applys IH. search.
+
+Theorem inst_list_ty_L_mono : forall L E m, nabla a,
+	tyvar_list (L a) E -> member (tyvar a) (L a) -> mono E m -> inst_list (L a) E a m.
+induction on 1. intros. case H1.
+	case H2.
+	case H2. applys mono_prune H3. applys IH. search.
+	applys inst_list_mono. search.
+
+
+Theorem inst_list_ty_inst_wft : forall L E C A Ai, nabla a,
+	inst_list L E (A a) (Ai a) -> wft E C -> inst_list L E (A C) (Ai C).
+induction on 1. intros I M. I: case I. search.
+	applys wft_prune M. applys mono_prune I.
+		I: applys IH. search.
+
+Theorem inst_list_ty_inst_mono : forall L E m A Ai, nabla a,
+	inst_list L E (A a) (Ai a) -> mono E m -> inst_list L E (A m) (Ai m).
+induction on 1. intros I M. I: case I. search.
+	applys mono_prune M. applys mono_prune I.
+		I: applys IH. search.
+
+Theorem inst_list_ty_inst : forall L E m A Ai, nabla a,
+	inst_list L E (A a) (Ai a) -> mono E m -> inst_list (tyvar a :: L) E (A a) (Ai m).
+intros IL M. applys inst_list_ty_inst_mono. search.
+
+Theorem inst_list_arrow_split : forall L E A B ABi,
+	inst_list L E (arrow A B) ABi ->
+	exists Ai Bi, ABi = arrow Ai Bi /\
+		inst_list L E A Ai /\ inst_list L E B Bi.
+induction on 1. intros. case H1. search.
+	applys IH. search.
+
+Theorem inst_list_arrow_inv : forall L E A Ai Bi,
+	inst_list L E A (arrow Ai Bi) ->
+	(name A /\ member (tyvar A) L) \/ exists A1 A2, A = arrow A1 A2 /\
+		inst_list L E A1 Ai /\ inst_list L E A2 Bi.
+induction on 1. intros. case H1. search.
+	applys IH. case H4.
+		case H5. case H7. search. search.
+		case H5. search. search.
+
+
+Theorem inst_list_all_match : forall L E A Ai,
+	inst_list L E (all A) Ai ->
+	exists ai, nabla a, Ai = all ai /\ inst_list L E (A a) (ai a).
+induction on 1. intros. case H1. search.
+	applys IH. search.
+
+Theorem inst_list_sty_inv : forall L E A, nabla a,
+	inst_list L (E a) (A a) a -> wfj (E a) -> member (styvar a) (E a) -> A = a\ a.
+induction on 1. intros. case H1. search.
+	applys mono_prune_styvar. applys IH. case H6. search.
+
+Theorem inst_list_var_inv : forall L E A, nabla a,
+	inst_list L E (A a) a -> wfj E -> A = a\ a.
+induction on 1. intros. case H1. search.
+	applys mono_prune H3. applys IH. case H5. search.
+
+Theorem inst_list_all_match_inv : forall L E A Ai,
+	inst_list L E A (all Ai) ->
+	exists a, nabla x, A = all a /\ inst_list L E (a x) (Ai x).
+induction on 1. intros. case H1. search.
+	applys IH. case H4. search. case H2.
+
+
+Theorem wft_open : forall E A B, nabla x,
+	wfj E -> wft (tyvar x :: E) (A x) -> wft E B -> wft E (A B).
+intros.
+	W: applys wft_weaken_f H3 with E = tyvar n1 :: nil.
+	W: applys wft_subst H2 W with T = A.
+	W: applys wft_strenthen_tyvar_fresh W1 with F = x\ nil, E = E.
+	search.
+
+Theorem inst_list_wfj : forall L E LE A Ai, inst_list L E A Ai -> wfj E -> append L E LE -> wfj LE.
+induction on 1. intros. case H1.
+	case H3. search.
+	case H3. applys append_prune_AB H6. applys IH. search.
+
+Theorem inst_list_wft : forall L E LE A Ai,
+	inst_list L E A Ai -> append L E LE -> wfj E -> wft LE A -> wft E Ai.
+induction on 1. intros. case H1.
+	case H2. search.
+	case H2. applys append_prune_AB H7.
+		W: applys mono_wft H5.
+		W: applys wft_weaken_f W.
+		W: applys wft_open _ W1 with A = A.
+			backchain inst_list_wfj.
+		applys IH. search.
+
+Theorem inst_list_wft_f : forall L F E FE LFE A Ai,
+	inst_list L E A Ai -> tyvar_list L FE -> wfj LFE ->
+	append F E FE -> append L FE LFE -> wfj E -> wft LFE A -> wft FE Ai.
+induction on 1. intros. case H1.
+	case H5. search.
+	case H5. case H2. case H3.
+		applys append_prune_AB H10. applys append_prune H4.
+		applys IH.
+			W: applys mono_wft H8.
+			W: applys wft_weaken_f W. W: applys wft_weaken_f W1.
+			W: applys wft_open _ W2 with A = A. search.
+		search.
+
+
+Theorem inst_list_prune_Ai : forall L E A Ai, nabla (a : ty),
+	inst_list L E A (Ai a) -> exists Ar, Ai = a\ Ar.
+induction on 1. intros. case H1. search.
+	applys mono_prune. applys IH. search.
+
+Theorem tyvar_list_prune_E_ty : forall L E, nabla a,
+	tyvar_list (L a) (E a) -> member (tyvar a) (L a) -> exists Er, E = a\ Er.
+induction on 1. intros. case H1; case H2.
+	applys IH. search.
+	search. applys member_prune H4.
+
+Theorem tyvar_list_prune_L_ty : forall L E, nabla a,
+	tyvar_list (L a) (E a) -> member (tyvar a) (E a) -> exists Lr, L = a\ Lr.
+induction on 1. intros. case H1.
+	search.
+	applys IH. search.
+	applys member_prune H2.
+
+Theorem tyvar_list_prune_L_sty : forall L E, nabla a,
+	tyvar_list (L a) (E a) -> member (styvar a) (E a) -> exists Lr, L = a\ Lr.
+induction on 1. intros. case H1.
+	search.
+	applys IH. search.
+	applys member_prune H2.
+
+
+Theorem tyvar_list_wfj : forall L E LE, tyvar_list L E -> wfj E -> append L E LE -> wfj LE.
+induction on 1. intros. case H1.
+	case H3. search.
+	case H3. applys append_prune_AB H5. applys IH. search.
+
+Theorem inst_list_mono_det : forall L E m m1,
+	inst_list L E m m1 -> mono E m -> m = m1.
+induction on 1. intros. case H1. search.
+	applys mono_prune H2. applys IH. search.
+
+Theorem inst_list_a_inL_isMono : forall L E m, nabla a,
+	member (tyvar a) (L a) -> inst_list (L a) E a (m a) -> exists mr, m = a\ mr /\ mono E mr.
+induction on 2. intros. case H2.
+	case H1.
+	case H1. applys IH. search.
+	case H1. applys inst_list_mono_det. search. applys member_prune H5.
+
+
+Kind dir type.
+Type pos, neg dir.
+
+Define sub_dir : dir -> olist -> ty -> ty -> prop by
+	sub_dir pos E A B := sub E A B;
+	sub_dir neg E A B := sub E B A.
+
+Define is_dir : dir -> prop by
+	is_dir pos; is_dir neg.
+
+
+
+Theorem sub_inst_top : forall E A m,
+	sub E top (A m) -> mono E m -> exists Ar, A = x\ Ar.
+induction on 1. intros S M. W: applys sub_wft S. S: case S.
+	case S. search. case M.
+
+
+Define styvar_list : olist -> olist -> prop by
+	styvar_list nil E;
+	nabla x, styvar_list (styvar x :: L) E := styvar_list L E.
+
+Theorem styvar_list_wfj : forall SL E SLE,
+	styvar_list SL E -> append SL E SLE -> wfj E -> wfj SLE.
+induction on 1. intros. case H1. case H2. search.
+	case H2. applys append_prune_AB H5. applys IH. search.
+
+Theorem styvar_list_ty_false : forall SL E X,
+	styvar_list SL E -> member (tyvar X) SL -> false.
+induction on 1. intros. case H1. case H2.
+	case H2. applys IH with X = X n1.
+
+
+Kind instantiation type.
+Type inst   ty -> ty -> instantiation.
+
+% SL, E, tys
+Define sty_inst_list : olist -> olist -> list instantiation -> prop by
+	sty_inst_list nil E nil;
+	nabla x, sty_inst_list (styvar x :: SL) E (inst x A :: Tys) := wft E A /\ sty_inst_list SL E Tys.
+
+Define subst_list : list instantiation -> ty -> ty -> prop by
+	subst_list nil A A;
+	nabla x, subst_list (inst x T :: Tys) (A x) As := subst_list Tys (A T) As.
+
+Define subst_list_i : olist -> olist -> ty -> ty -> prop by
+	subst_list_i nil E A A;
+	nabla x, subst_list_i (styvar x :: L) E (A x) Asi := subst_list_i L E (A i) Asi.
+
+
+Theorem subst_list_is_styvar_list : forall SL E Tys A As,
+	sty_inst_list SL E Tys -> subst_list Tys A As -> styvar_list SL E.
+induction on 1. intros. case H1. search.
+	case H2. applys IH. search.
+Theorem subst_list_i_is_styvar_list : forall SL E A As,
+	subst_list_i SL E A As -> styvar_list SL E.
+induction on 1. intros. case H1. search. applys IH. search.
+
+Define simple_type : olist -> ty -> prop by
+	simple_type E i;
+	simple_type E top;
+	simple_type E bot;
+	nabla a, simple_type (E a) a := nabla a, member (tyvar a) (E a);
+	nabla a, simple_type (E a) a := nabla a, member (styvar a) (E a).
+
+
+Theorem simple_type_prune : forall E A, nabla (x : ty),
+	simple_type E (A x) -> exists Ar, A = x\ Ar.
+intros. case H1; try search; try applys member_prune H2.
+
+Theorem subst_list_i_simple_type_det : forall L E A Ai,
+	simple_type E A -> subst_list_i L E A Ai -> Ai = A.
+induction on 2. intros. case H2. search.
+	applys simple_type_prune H1. applys IH. search.
+
+Theorem subst_list_i_sty_det : forall L E Ai, nabla a,
+	member (styvar a) (L a) -> subst_list_i (L a) (E a) a (Ai a) -> Ai = x\ i.
+induction on 2. intros. case H2. case H1.
+	case H1. applys IH. search.
+	case H1. applys subst_list_i_simple_type_det. search.
+		applys member_prune H4.
+
+
+Theorem subst_list_i_mono_det : forall L E m Ai,
+	mono E m -> subst_list_i L E m Ai -> Ai = m.
+induction on 2. intros. case H2. search.
+	applys mono_prune H1. applys IH. search.
+
+Theorem subst_list_i_wft_det : forall L E m Ai,
+	wft E m -> subst_list_i L E m Ai -> Ai = m.
+induction on 2. intros. case H2. search.
+	applys wft_prune H1. applys IH. search.
+
+Theorem inst_list_simple_type_det : forall L E A Ai,
+	simple_type E A -> inst_list L E A Ai -> Ai = A.
+induction on 2. intros. case H2. search.
+	applys simple_type_prune H1. applys IH. search.
+
+Theorem sub_list_i_ty : forall SL E SLE A Ai, nabla a,
+	append (SL a) (E a) (SLE a) -> member (tyvar a) (SLE a) ->
+	subst_list_i (SL a) (E a) (A a) (Ai a) ->
+	exists SLr, SL = a\ SLr /\ member (tyvar a) (E a).
+induction on 3. intros. case H3.
+	case H1. search.
+	case H1. case H2. applys IH. search.
+	case H1. case H2. applys append_prune_AB H5. applys member_prune H6.
+
+Theorem tyvar_list_styvar_false : forall L E a,
+	tyvar_list L E -> member (styvar a) L -> false.
+induction on 1. intros. case H1. case H2.
+	case H2. applys IH with a = a n1. 
+
+Theorem subst_list_i_prune_sty_E : forall SL E A As, nabla a,
+	subst_list_i (SL a) (E a) (A a) (As a) -> member (styvar a) (SL a) ->
+	exists Er, E = a\ Er.
+induction on 1. intros. case H1. case H2.
+	case H2. applys IH. search.
+	case H2. search. applys member_prune H4.
+
+Theorem subst_list_i_prune_sty_L : forall SL E A As, nabla a,
+	subst_list_i (SL a) (E a) (A a) (As a) -> member (styvar a) (E a) ->
+	exists SLr, SL = a\ SLr.
+induction on 1. intros. case H1. search.
+	applys IH. search.
+	applys member_prune H2.
+
+Theorem subst_list_i_wft : forall SL E A B,
+	wft E A -> wft E B -> styvar_list SL E -> subst_list_i SL E A A.
+induction on 3. intros. case H3. search.
+	applys wft_prune H1. applys wft_prune H2. applys IH H1 H2. search.
+
+Theorem subst_list_i_mono : forall SL E A B,
+	mono E A -> mono E B -> styvar_list SL E -> subst_list_i SL E A A.
+intros. applys mono_wft H1. applys mono_wft H2.
+	backchain subst_list_i_wft.
+
+Theorem subst_list_wft : forall SL E Tys A,
+	sty_inst_list SL E Tys -> wft E A -> subst_list Tys A A.
+induction on 1. intros. case H1. search.
+	applys wft_prune H2. applys wft_prune H3. applys IH. search.
+
+Theorem sty_inst_list_wfj : forall SL E SLE Tys,
+	sty_inst_list SL E Tys -> wfj E -> append SL E SLE -> wfj SLE.
+induction on 1. intros. case H1.
+	case H3. search.
+	case H3. applys append_prune_AB H6. applys IH. search.
+
+Theorem subst_list_SLE_wft : forall SL E SLE Tys A As,
+	sty_inst_list SL E Tys -> wfj E -> append SL E SLE -> wft SLE A ->
+	subst_list Tys A As -> wft E As.
+induction on 1. intros. case H1.
+	case H3. case H5. search.
+	case H3. case H5. applys append_prune_AB H8.
+		W: applys wft_sty_ty H4.
+		W: applys wft_weaken_f H6.
+		W: applys wft_open W W1. backchain sty_inst_list_wfj.
+		applys IH.
+		search.
+
+Theorem subst_list_wft_det : forall SL E T Tys A,
+	sty_inst_list SL E Tys -> wft E A -> subst_list Tys A T -> A = T.
+induction on 1. intros. case H1. case H3. search.
+	applys wft_prune H2. case H3. applys IH. search.
+
+Theorem subst_list_ty_fresh : forall SL E Tys, nabla a,
+	sty_inst_list SL E Tys -> subst_list Tys a a.
+induction on 1. intros. case H1. search.
+	applys IH. search.
+
+Theorem subst_list_ty_fresh_det : forall Tys A, nabla a,
+	subst_list Tys a (A a) -> A = z\ z.
+induction on 1. intros. case H1. search.
+	applys IH. search.
+
+Theorem subst_list_total : forall SL E Tys A,
+	sty_inst_list SL E Tys -> exists A', subst_list Tys A A'.
+induction on 1. intros. case H1. search.
+	applys IH with A = A A1. search.
+
+Theorem member_prune_T[T] : forall (E : list T) B, nabla (x : ty),
+	member (B x) E -> exists Fr, B = x\Fr.
+induction on 1. intros. case H1.
+	search. apply IH to H2. search.
+
+Theorem subst_list_sty : forall SL E T Tys, nabla a,
+	sty_inst_list (SL a) (E a) (Tys a) -> member (inst a T) (Tys a) -> wft (E a) T -> subst_list (Tys a) a T.
+induction on 1. intros. case H1. case H2.
+	case H2. applys wft_prune H3. applys IH. search.
+	case H2. applys subst_list_wft H5 with A = A. search.
+		applys member_prune_T H6.
+
+Theorem subst_list_sty_det : forall SL E T Tys, nabla a,
+	sty_inst_list (SL a) (E a) (Tys a) -> member (styvar a) (SL a) ->
+	subst_list (Tys a) a (T a) ->
+	exists Tr, nabla a, T = x\ Tr /\ wft (E a) Tr /\ member (inst a Tr) (Tys a).
+induction on 1. intros. case H1. case H2.
+	case H2. case H3. applys IH. search.
+	case H2. case H3. applys subst_list_wft_det H5. search.
+		applys member_prune H6.
+
+Theorem subst_list_sty_E_id : forall SL E T Tys, nabla a,
+	sty_inst_list SL (E a) (Tys a) -> member (styvar a) (E a) ->
+	subst_list (Tys a) a (T a) -> T = z\ z.
+induction on 1. intros. case H1. case H3. search.
+	case H3. applys IH. search.
+
+Theorem subst_list_sty_det_mem : forall SL E T Tr Tys, nabla a,
+	sty_inst_list (SL a) (E a) (Tys a) -> member (inst a Tr) (Tys a) ->
+	subst_list (Tys a) a (T a) -> T = x\ Tr.
+induction on 1. intros. case H1. case H2.
+	case H2. case H3. applys IH. search.
+	case H2. case H3. applys subst_list_wft_det H5. search.
+		applys member_prune_T H6.
+
+
+Theorem subst_list_i_arrow_split : forall L E A B ABi,
+	subst_list_i L E (arrow A B) ABi ->
+	exists Ai Bi, ABi = arrow Ai Bi /\
+		subst_list_i L E A Ai /\ subst_list_i L E B Bi.
+induction on 1. intros. case H1. search.
+	applys IH. search.
+
+Theorem subst_list_i_all_match : forall L E A Ai,
+	subst_list_i L E (all A) Ai ->
+	exists ai, nabla a, Ai = all ai /\ subst_list_i L E (A a) (ai a).
+induction on 1. intros. case H1. search.
+	applys IH. search.
+
+Theorem subst_list_i_top_inv : forall SL E A, subst_list_i SL E A top -> A = top.
+induction on 1. intros. case H1. search.
+	applys IH. case H3. search.
+
+Theorem inst_list_top_inv : forall L E A, inst_list L E A top -> A = top.
+induction on 1. intros. case H1. search.
+	applys IH. case H4. search. case H2.
+
+Theorem inst_list_i_inv : forall L E A, inst_list L E A i -> A = i \/ (name A /\ member (tyvar A) L).
+induction on 1. intros. case H1. search.
+	applys IH. case H4.
+		case H5. search. search.
+		case H5. case H7. search. search.
+
+Theorem subst_list_i_arrow_inv : forall L E A Ai Bi,
+	subst_list_i L E A (arrow Ai Bi) ->
+	exists A1 A2, A = arrow A1 A2 /\
+		subst_list_i L E A1 Ai /\ subst_list_i L E A2 Bi.
+induction on 1. intros. case H1. search.
+	applys IH. case H3. search.
+
+
+Theorem subst_list_i_ty_inst_mono : forall SL E m A Ai, nabla a,
+	subst_list_i SL E (A a) (Ai a) -> mono E m -> subst_list_i SL E (A m) (Ai m).
+induction on 1. intros I M. I: case I. search.
+	applys mono_prune M. I: applys IH. search.
+
+Theorem subst_list_ty_inst_mono : forall SL E Tys m A Ai, nabla a,
+	sty_inst_list SL E Tys -> subst_list Tys (A a) (Ai a) ->
+	mono E m -> subst_list Tys (A m) (Ai m).
+induction on 1. intros I SL M. I: case I. case SL. search.
+	SL: case SL. applys mono_prune M. I: applys IH. search.
+
+Theorem subst_list_ty_inst_wft : forall SL E Tys C A Ai, nabla a,
+	sty_inst_list SL E Tys -> subst_list Tys (A a) (Ai a) ->
+	wft E C -> subst_list Tys (A C) (Ai C).
+induction on 1. intros I SL M. I: case I. case SL. search.
+	SL: case SL. applys wft_prune M. I: applys IH. search.
+
+Theorem subst_list_i_sty_i : forall L E A Ai, nabla a,
+	subst_list_i L E (A a) (Ai a) -> subst_list_i (styvar a :: L) E (A a) (Ai i).
+intros. case H1. search.
+	applys subst_list_i_ty_inst_mono. search.
+
+Theorem subst_list_arrow_split : forall Tys A B ABi,
+	subst_list Tys (arrow A B) ABi ->
+	exists Ai Bi, ABi = arrow Ai Bi /\
+		subst_list Tys A Ai /\ subst_list Tys B Bi.
+induction on 1. intros. case H1. search.
+	applys IH. search.
+
+Theorem subst_list_det : forall Tys A A1 A2,
+	subst_list Tys A A1 -> subst_list Tys A A2 -> A1 = A2.
+induction on 1. intros. case H1; case H2. search.
+	applys IH H3 H4. search.
+
+Theorem subst_list_arrow_combine : forall SL E Tys A B Ai Bi,
+	sty_inst_list SL E Tys ->
+	subst_list Tys A Ai -> subst_list Tys B Bi ->
+	subst_list Tys (arrow A B) (arrow Ai Bi).
+intros. applys subst_list_total with A = arrow A B.
+	applys subst_list_arrow_split.
+	applys subst_list_det H5. applys subst_list_det H6.
+	search.
+
+Theorem subst_list_all_match : forall Tys A Ai,
+	subst_list Tys (all A) Ai ->
+	exists ai, nabla a, Ai = all ai /\ subst_list Tys (A a) (ai a).
+induction on 1. intros. case H1. search.
+	applys IH. search.
+
+Theorem subst_list_all_match_inv : forall SL E Tys A Ai,
+	sty_inst_list SL E Tys -> subst_list Tys A (all Ai) ->
+	(name A /\ member (styvar A) SL) \/ exists a, nabla x, A = all a /\ subst_list Tys (a x) (Ai x).
+induction on 1. intros. case H1. case H2. search.
+	case H2. applys IH. case H6.
+		case H7. case H9. search. search.
+		case H7. search. search.
+
+Theorem subst_list_subst_all_inv : forall SL E Tys A Ai C,
+	sty_inst_list SL E Tys -> subst_list Tys (A C) Ai ->
+	wft E C -> exists ai, Ai = ai C /\ subst_list Tys (all A) (all ai).
+induction on 1. intros. case H1.
+	case H2. exists A. search.
+	case H2. applys wft_prune H3.
+		applys IH with A = A A1.
+		exists ai. search.
+
+Theorem subst_list_i_all_match_inv : forall SL E A Ai,
+	subst_list_i SL E A (all Ai) ->
+	exists a, nabla x, A = all a /\ subst_list_i SL E (a x) (Ai x).
+induction on 1. intros. case H1. search.
+	applys IH. case H3. search.
+
+Theorem subst_list_i_var_inv : forall SL E A Ai,
+	subst_list_i SL E A Ai -> name Ai -> A = Ai.
+induction on 1. intros. case H1. search.
+	applys IH. case H2. case H4. search.
+
+Theorem subst_list_i_i_inv : forall SL E A,
+	subst_list_i SL E A i -> A = i \/ (name A /\ member (styvar A) SL).
+induction on 1. intros. case H1. search.
+	applys IH. case H3. case H4. search. search.
+		case H4. case H6. search.
+
+Theorem tyvar_list_weaken : forall L F E FE,
+	append F E FE -> tyvar_list L FE -> tyvar_list L E.
+induction on 2. intros. case H2. search.
+	applys append_prune H1. applys IH. search.
+
+
+Theorem sty_inst_list_exists : forall SL E,
+	styvar_list SL E -> exists Tys, sty_inst_list SL E Tys.
+induction on 1. intros. case H1. search.
+	applys IH. search.
+
+Theorem sty_inst_list_exists_a : forall SL E T, nabla a,
+	styvar_list (SL a) (E a) -> member (styvar a) (SL a) -> wft (E a) T ->
+	exists Tys, nabla a,
+		sty_inst_list (SL a) (E a) (Tys a) /\ member (inst a T) (Tys a).
+induction on 1. intros. case H1. case H2.
+	case H2. applys wft_prune H3. applys IH. search.
+	applys sty_inst_list_exists H4. search.
+
+Theorem sty_inst_list_exists_ab : forall SL E A B, nabla a b,
+	styvar_list (SL a b) (E a b) ->
+	member (styvar a) (SL a b) -> member (styvar b) (SL a b) ->
+	wft (E a b) A -> wft (E a b) B ->
+	exists Tys, nabla a b,
+		sty_inst_list (SL a b) (E a b) (Tys a b) /\
+		member (inst a A) (Tys a b) /\ member (inst b B) (Tys a b).
+induction on 1. intros. case H1. case H2.
+	case H2. case H3.
+		applys wft_prune H4.
+		applys wft_prune H5.
+		applys IH H4 H5. search.
+	case H2. applys sty_inst_list_exists_a H6 with T = A. search.
+	case H3. applys sty_inst_list_exists_a H6 with T = B. search.
+
+Theorem sty_inst_list_exists_all_i : forall SL E,
+	styvar_list SL E -> exists Tys, sty_inst_list SL E Tys /\
+		forall A As, subst_list_i SL E A As -> subst_list Tys A As.
+induction on 1. intros. case H1.
+	exists nil. split. search. intros. case H2. search.
+	applys IH.
+		exists (inst n1 i :: Tys). split. search.
+		intros. case H5. applys H4. search.
+
+Theorem sty_inst_list_exists_T : forall SL E Tys, nabla a,
+	sty_inst_list (SL a) (E a) (Tys a) -> member (styvar a) (SL a) ->
+	exists T, nabla a, wft (E a) T /\ member (inst a T) (Tys a).
+induction on 1. intros. case H1. case H2.
+	case H2. applys IH. search.
+	case H2. search. applys member_prune H5.
+
+
+Theorem sty_inst_list_prune : forall SL E Ty_, nabla (a : ty),
+	sty_inst_list SL E (Ty_ a) -> exists Tys, Ty_ = a\ Tys.
+induction on 1. intros. case H1. search.
+	applys wft_prune H2. applys IH. search.
+
+Theorem sty_inst_list_mono : forall SL E SLE Tys m,
+	append SL E SLE -> sty_inst_list SL E Tys -> wfj E -> mono SLE m -> mono E m.
+induction on 2. intros. case H2. case H1. search.
+	W: applys sty_inst_list_wfj H1.
+		case H1. applys mono_prune_styvar H4.
+		applys append_prune_AB H7.
+		applys mono_strenthen_styvar_fresh H4.
+		applys IH.
+		search.
+
+Theorem subst_list_prune_R : forall Tys A A_, nabla (a : ty),
+	subst_list Tys A (A_ a) -> exists As, A_ = x\ As.
+induction on 1. intros. case H1. search. applys IH. search.
+
+Theorem sty_inst_list_prune_sty : forall SL E_ Tys, nabla (a : ty),
+	sty_inst_list (SL a) (E_ a) (Tys a) -> member (styvar a) (SL a) -> exists E, E_ = a\ E.
+induction on 1. intros. case H1. case H2.
+	case H2. applys IH. search.
+	search.
+
+Theorem sty_inst_list_prune_sty_SL : forall SL_ E Tys, nabla (a : ty),
+	sty_inst_list (SL_ a) (E a) (Tys a) -> member (styvar a) (E a) ->
+	exists SL, SL_ = x\ SL.
+induction on 1. intros. case H1. search.
+	applys IH. search.
+	applys member_prune H2.
+
+Theorem subst_list_prune_sty_R : forall SL E_ Tys A A_, nabla (a : ty),
+	sty_inst_list (SL a) (E_ a) (Tys a) -> member (styvar a) (SL a) ->
+	subst_list (Tys a) (A a) (A_ a) -> exists As E, A_ = x\ As /\ E_ = x\ E.
+induction on 1. intros. applys sty_inst_list_prune_sty. case H1. case H2.
+	case H2. case H3. applys wft_prune H4. applys IH. search.
+	case H3. search.
+
+Theorem tyvar_list_add_sty : forall L E, nabla a,
+	tyvar_list L E -> tyvar_list L (styvar a :: E).
+induction on 1. intros. case H1. search.
+	applys IH. search.
+
+Define fresh_olist : ty -> olist -> prop by
+	nabla x, fresh_olist x L.
+
+
+Theorem wft_sty_move_back : forall G F E GxFE GFxE A, nabla a,
+	split3 G (styvar a :: F) E (GxFE a) -> split3 G F (styvar a :: E) (GFxE a) ->
+	wft (GxFE a) (A a) -> wft (GFxE a) (A a).
+induction on 3. intros S S W. W: case W; try search.
+	M: applys split3_mem_inv W. M: case M.
+		applys split3_mem S1. search.
+		M: case M. applys split3_mem S1. search.
+		applys split3_mem S1 with X = tyvar n2. search.
+	M: applys split3_mem_inv W. M: case M.
+		applys member_prune M.
+		M: case M. applys member_prune M.
+		applys member_prune M.
+	M: applys split3_mem_inv W. M: case M.
+		applys split3_mem S1. search.
+		M: case M. applys split3_mem S1. search.
+		applys split3_mem S1 with X = styvar n2. search.
+	applys split3_mem S1. search.
+	applys IH W. applys IH W1. search.
+	applys split3_cons S with X = tyvar n2.
+		applys split3_cons S1 with X = tyvar n2.
+		applys IH H1 H2. search.
+
+
+Define ty_basic : ty -> prop by
+	ty_basic i;
+	ty_basic top;
+	ty_basic bot;
+	nabla a, ty_basic a.
+
+Define ty_scheme_2 : ty -> ty -> prop by
+	ty_scheme_2 (arrow A1 A2) (arrow B1 B2) := ty_scheme_2 B1 A1 /\ ty_scheme_2 A2 B2;
+	ty_scheme_2 (all A) (all B) := nabla a, ty_scheme_2 (A a) (B a);
+
+	ty_scheme_2 (all A) B := nabla a, ty_scheme_2 (A a) B /\ notAll_ B;
+	ty_scheme_2 A (all B) := nabla a, ty_scheme_2 A (B a) /\ notAll_ A;
+
+	ty_scheme_2 (arrow A1 A2) B := ty_scheme_2 B A1 /\ ty_scheme_2 A2 B /\ ty_basic B;
+	ty_scheme_2 A (arrow B1 B2) := ty_scheme_2 B1 A /\ ty_scheme_2 A B2 /\ ty_basic A;
+
+	ty_scheme_2 A B := ty_basic A /\ ty_basic B.
+
+
+
+% try: just i, gen, gen subst_list, better scheme
+Theorem sub_C_sty : forall SL SLE La E LaE Lb LbE A B Ai Bi Asi Bsi,
+	append SL E SLE ->
+	append La SLE LaE -> tyvar_list La SLE -> wft LaE A ->
+	append Lb SLE LbE -> tyvar_list Lb SLE -> wft LbE B ->
+	wfj E ->
+	(forall Tys As Bs, sty_inst_list SL E Tys -> subst_list Tys A As -> subst_list Tys B Bs ->
+		exists Ai Bi, inst_list La E As Ai /\ inst_list Lb E Bs Bi /\ sub E Ai Bi) ->
+	inst_list La E A Ai -> inst_list Lb E B Bi ->
+	subst_list_i SL E Ai Asi ->
+	subst_list_i SL E Bi Bsi ->
+	sub E Asi Bsi ->
+	ty_scheme_2 A B ->
+	sub SLE Ai Bi.
+induction on 15. intros ASL Aa TLa Wa Ab TLb Wb WE All Ia Ib SLa SLb S TyScheme.
+	%% Auxilary lemmas
+	aux_A_ty: assert name A -> member (tyvar A) LaE -> (
+				% a \in L
+				member (tyvar A) La /\ fresh_olist A SLE /\
+					exists M, Ai = M /\ Asi = M /\ mono E M
+			) \/ (
+				% a \in E
+				member (tyvar A) E /\ fresh_olist A SL /\
+					Ai = A /\ Asi = A
+			).
+		intros name M. case name.
+		M: applys append_mem_inv M. M: case M1.
+		% a \in L
+			applys tyvar_list_prune_E_ty M1.
+			applys append_prune ASL.
+			M: applys inst_list_a_inL_isMono Ia.
+			SL: applys subst_list_i_mono_det SLa.
+			search. % left
+		% a \in E
+			M: applys sub_list_i_ty M1.
+			applys tyvar_list_prune_L_ty TLa.
+			applys inst_list_ty_det Ia.
+			SL: applys subst_list_i_simple_type_det SLa.
+			search.
+
+	aux_B_ty: assert name B -> member (tyvar B) LbE -> (
+				% b \in L
+				member (tyvar B) Lb /\ fresh_olist B SLE /\
+					exists M, Bi = M /\ Bsi = M /\ mono E M
+			) \/ (
+				% b \in E
+				member (tyvar B) E /\ fresh_olist B SL /\
+					Bi = B /\ Bsi = B
+			).
+		intros name M. case name.
+		M: applys append_mem_inv M. M: case M1.
+		% a \in L
+			applys tyvar_list_prune_E_ty M1.
+			applys append_prune ASL.
+			M: applys inst_list_a_inL_isMono Ib.
+			SL: applys subst_list_i_mono_det SLb.
+			search. % left
+		% a \in E
+			M: applys sub_list_i_ty M1.
+			applys tyvar_list_prune_L_ty TLb.
+			applys inst_list_ty_det Ib.
+			SL: applys subst_list_i_simple_type_det SLb.
+			search.
+
+	aux_A_sty: assert name A -> member (styvar A) LaE -> fresh_olist A La /\ fresh_olist A Lb /\ (
+				% ~a \in SL
+				member (styvar A) SL /\ Ai = A /\ Asi = i
+			) \/ (
+				% ~a \in E
+				member (styvar A) E /\ fresh_olist A SL /\ Ai = A /\ Asi = A
+			).
+		intros name M. case name.
+		M: applys append_mem_inv M. M: case M1. applys tyvar_list_styvar_false M1.
+		applys tyvar_list_prune_L_sty M1 TLa. applys tyvar_list_prune_L_sty M1 TLb.
+		applys inst_list_ty_det Ia.
+		M: applys append_mem_inv M1. M: case M2.
+		% ~a \in SL
+			applys subst_list_i_sty_det. search.
+		% ~a \in E
+			applys subst_list_i_prune_sty_L M2.
+			applys subst_list_i_simple_type_det SLa.
+			search.
+
+	aux_B_sty: assert name B -> member (styvar B) LbE -> fresh_olist B La /\ fresh_olist B Lb /\ (
+				% ~b \in SL
+				member (styvar B) SL /\ Bi = B /\ Bsi = i
+			) \/ (
+				% ~b \in E
+				member (styvar B) E /\ fresh_olist B SL /\ Bi = B /\ Bsi = B
+			).
+		intros name M. case name.
+		M: applys append_mem_inv M. M: case M1. applys tyvar_list_styvar_false M1.
+		applys tyvar_list_prune_L_sty M1 TLa. applys tyvar_list_prune_L_sty M1 TLb.
+		applys inst_list_ty_det Ib.
+		M: applys append_mem_inv M1. M: case M2.
+		% ~a \in SL
+			applys subst_list_i_sty_det. search.
+		% ~a \in E
+			applys subst_list_i_prune_sty_L M2.
+			applys subst_list_i_simple_type_det SLb.
+			search.
+	%%
+Wa: case Wa (keep).
+	% A = i
+	applys inst_list_simple_type_det Ia. applys subst_list_i_simple_type_det SLa.
+		Wb: case Wb (keep); try (applys inst_list_simple_type_det Ib; search).
+		% B = bot   false
+			applys inst_list_bot_det Ib. applys subst_list_i_simple_type_det SLb.
+			case S.
+		% B = c
+			M: applys append_mem_inv Wb1. M: case M.
+			% c \in L
+				applys tyvar_list_prune_E_ty M.
+				applys append_prune ASL. rename FA to SL. rename FB to E.
+				M: applys inst_list_a_inL_isMono M  with a = n1, m = Bi.
+				SL: applys subst_list_i_mono_det SLb.
+				S: case S; M: case M1. search.
+			% c \in E
+				M: applys sub_list_i_ty M.
+				applys tyvar_list_prune_L_ty TLb.
+				applys inst_list_ty_det Ib.
+				SL: applys subst_list_i_simple_type_det SLb.
+				case S.
+		% ~a
+			M: applys append_mem_inv Wb1. M: case M. applys tyvar_list_styvar_false M.
+			applys tyvar_list_prune_L_sty M. applys tyvar_list_prune_L_sty M TLb.
+				applys inst_list_ty_det Ib.
+			M: applys append_mem_inv M. M: case M1.
+			% ~a \in SL
+				STL: applys subst_list_i_is_styvar_list SLa.
+				Tys: applys sty_inst_list_exists_a STL with T = bot.
+				SL: applys subst_list_sty Tys1.
+				SL: applys subst_list_wft Tys.
+				S: applys All SL1 SL.
+					I: applys inst_list_i_det S1. I: applys inst_list_bot_det S2.
+					case S3.
+			% ~a \in E
+				applys subst_list_i_simple_type_det SLb. case S.
+		% B = ->   false
+			I: applys inst_list_arrow_split Ib.
+			SL: applys subst_list_i_arrow_split SLb. case S.
+		% B = forall   false
+			I: applys inst_list_all_match Ib.
+			SL: applys subst_list_i_all_match SLb. case S.
+	% A = top
+		I: applys inst_list_simple_type_det Ia.
+		SL: applys subst_list_i_simple_type_det SLa.
+		case S.
+		applys subst_list_i_top_inv SLb.
+		search.
+	% A = bot
+		I: applys inst_list_simple_type_det Ia.
+		SL: applys subst_list_i_simple_type_det SLa.
+		SL: applys subst_list_i_is_styvar_list.
+		W: applys styvar_list_wfj. W: applys tyvar_list_wfj TLb.
+		W: applys inst_list_wft_f Ib.
+		search.
+	% A = a
+		A: applys aux_A_ty. A: case A. clear aux_A_ty aux_A_sty.
+		% a \in L
+			case A1. rename L to SLE.
+			applys append_prune ASL. rename FA to SL. rename FB to E.
+			applys mono_prune A2.
+			Wb: case Wb (keep).
+			% B = i
+				applys inst_list_simple_type_det Ib.
+				applys subst_list_i_simple_type_det SLb.
+				case S; case A2; search.
+			% B = top
+				applys inst_list_simple_type_det Ib.
+				applys subst_list_i_simple_type_det SLb.
+				case S; case A2; try applys wft_weaken_f H1; try search.
+			% B = bot
+				applys inst_list_simple_type_det Ib.
+				applys subst_list_i_simple_type_det SLb.
+				case S; case A2; search.
+			% B = b
+				B: applys aux_B_ty. B: case B.
+				% b \in L
+					case B1. rename L to SLE.
+					applys append_prune ASL. rename FA to SL. rename FB to E.
+					applys mono_prune A2.
+					applys mono_prune B2. applys mono_prune B2.
+					applys sub_mono with A = m1, B = m3.
+					W: applys mono_wft A2. W: applys wft_weaken_f W.
+					S: applys sub_refl W1. search.
+				% b \in E
+					M: applys append_mem ASL.
+					S: case S; case A2; search.
+			% B = a
+				B: applys aux_B_ty. B: case B.
+				% B \in L
+					applys mono_prune B2.
+					applys sub_mono with A = m, B = m1.
+					W: applys mono_wft A2. W: applys wft_weaken_f W.
+					S: applys sub_refl W1. search.
+				% B \in E
+					applys member_prune B.
+			% B = ~b
+				B: applys aux_B_sty. B: case B.
+				% ~b \in SL
+					STL: applys subst_list_i_is_styvar_list SLa.
+					Tys: applys sty_inst_list_exists_a STL with T = bot. permute (n1 n2) Tys.
+					SL: applys subst_list_sty Tys1.
+					SL: applys subst_list_ty_fresh Tys.
+					S: applys All Tys.
+						I: applys inst_list_a_inL_isMono S1. I: applys inst_list_bot_det S2.
+						case S3; case I.
+				% ~b \in E
+					S: case S; M: case A2.
+						applys wfj_tyvar_styvar M.
+						applys wfj_tyvar_styvar M.
+			% B = ~a
+				B: applys aux_B_sty. B: case B.
+				% ~b \in SL
+					applys member_prune B2.
+				% ~b \in E
+					S: case S; M: case A2.
+			% B = ->
+				clear aux_B_ty aux_B_sty.
+				I: applys inst_list_arrow_split Ib.
+				SL: applys subst_list_i_arrow_split SLb.
+				S: case S; M: case A2.
+				SL: applys subst_list_i_is_styvar_list.
+
+				TySc: case TyScheme; try solve case TySc1.
+				
+				applys subst_list_i_mono M.
+				Ind: applys 1 IH Wb1 Wa TySc I SL with Bi = m1.
+					TL: applys tyvar_list_weaken TLa.
+						applys inst_list_ty_L_mono M TL. search.
+					% Main condition
+						intros Tys SL SL.
+						applys sty_inst_list_prune Tys.
+						applys subst_list_ty_fresh_det SL4.
+						SL: applys subst_list_total Tys with A = arrow (A1 n1) (B1 n1).
+						SL: applys subst_list_arrow_split SL5.
+						applys subst_list_det *SL6.
+						S: applys All Tys.
+						M: applys inst_list_a_inL_isMono S2.
+						I: applys inst_list_arrow_split S3.
+						S: case S4; M: case M2.
+						exists Ai5 n1, mr1.
+						TL: applys tyvar_list_weaken TLa.
+						I: applys inst_list_ty_L_mono TL with m = mr1.
+						search.
+				
+				SLI: applys subst_list_i_mono M1.
+				Ind: applys 1 IH Wa Wb2 SLI TySc1 with Ai = m2.
+					TL: applys tyvar_list_weaken TLa.
+						applys inst_list_ty_L_mono M1 TL. search.
+					% Main condition
+						intros Tys SL SL.
+						applys sty_inst_list_prune Tys.
+						applys subst_list_ty_fresh_det SL3.
+						SL: applys subst_list_total Tys with A = arrow (A1 n1) (B1 n1).
+						SL: applys subst_list_arrow_split SL5.
+						applys subst_list_det *SL7.
+						S: applys All Tys.
+						M: applys inst_list_a_inL_isMono S2.
+						I: applys inst_list_arrow_split S3.
+						S: case S4; M: case M2.
+						exists mr2, Bi5 n1.
+						TL: applys tyvar_list_weaken TLa.
+						I: applys inst_list_ty_L_mono TL with m = mr2.
+						search.
+
+				search.
+			% B = forall
+				I: applys inst_list_all_match Ib.
+				SL: applys subst_list_i_all_match SLb.
+				case S; case A2.
+		% a \in E
+			M: applys append_mem ASL.
+			S: case S.
+			% top
+				applys subst_list_i_top_inv SLb.
+				applys inst_list_top_inv Ib.
+				search.
+			% a
+				applys subst_list_i_var_inv SLb.
+				search.
+			% ~a
+				applys subst_list_i_var_inv SLb.
+				search.
+	% A = ~a
+		A: applys *aux_A_sty. A: case A.
+		% ~a \in L
+			S: case S.
+			% i <: i
+				B: applys subst_list_i_i_inv SLb. B: case B.
+				% Bi = i
+					B: applys inst_list_i_inv Ib. B: case B.
+					% B = i
+						STL: applys subst_list_i_is_styvar_list SLa.
+						Tys: applys sty_inst_list_exists_a STL with T = top.
+						SL: applys subst_list_sty Tys1.
+						SL: applys subst_list_wft Tys.
+						S: applys All.
+						applys inst_list_simple_type_det S.
+						applys inst_list_simple_type_det S1.
+						case S2.
+					case B.
+					% B = b
+						STL: applys subst_list_i_is_styvar_list SLa.
+						Tys: applys sty_inst_list_exists_a STL with T = top, a = n1.
+						SL: applys subst_list_sty Tys1.
+						applys tyvar_list_prune_E_ty TLb. rename Er to SLE.
+						applys append_prune ASL. rename FA to SL'. rename FB to E.
+						applys sty_inst_list_prune Tys.
+						SL: applys subst_list_ty_fresh Tys.
+						S: applys All Tys.
+						applys inst_list_simple_type_det S.
+						M: applys inst_list_a_inL_isMono S1.
+						case S2; case M.
+					% false
+						case A1. applys member_prune B1.
+				case B.
+				% Bi = ~b
+					applys tyvar_list_prune_L_sty TLb. backchain append_mem.
+					STL: applys subst_list_i_is_styvar_list SLa.
+					Tys: applys sty_inst_list_exists_ab STL with A = i, B = top.
+					SL: applys subst_list_sty Tys1.
+					SL: applys subst_list_sty Tys2.
+					applys sty_inst_list_prune_sty Tys.
+					applys inst_list_var_inv Ib.
+
+					S: applys All.
+					applys inst_list_simple_type_det S.
+					applys inst_list_simple_type_det S1.
+					case S2.
+				% Bi = ~a
+					M: applys append_mem ASL. search.
+
+			% B = top
+				applys subst_list_i_top_inv SLb.
+				applys inst_list_top_inv Ib.
+				M: applys append_mem ASL.
+				search.
+
+		% ~a \in E
+			S: case S.
+			% top
+				applys subst_list_i_top_inv SLb.
+				applys inst_list_top_inv Ib.
+				M: applys append_mem ASL.
+				search.
+			% false
+				applys wfj_tyvar_styvar S.
+			% B = ~a
+				applys subst_list_i_var_inv SLb.
+				M: applys append_mem ASL.
+				search.
+	% A = ->
+		clear aux_A_ty aux_A_sty.
+		I: applys inst_list_arrow_split Ia.
+		SL: applys subst_list_i_arrow_split SLa.
+		S: case S.
+		% B = top
+			applys subst_list_i_top_inv SLb.
+			applys inst_list_top_inv Ib.
+			SL: applys subst_list_i_is_styvar_list.
+			W: applys styvar_list_wfj. W: applys tyvar_list_wfj TLa.
+			W: applys inst_list_wft_f.
+			search.
+		% Bs = ->
+			SL: applys subst_list_i_arrow_inv SLb.
+			I: applys inst_list_arrow_inv Ib.
+			I: case I2.
+			% B = b (inst)
+				case I2.
+				clear aux_B_ty aux_B_sty.
+				applys tyvar_list_prune_E_ty. rename Er to SLE.
+				applys append_prune ASL. rename FA to SL'. rename FB to E.
+				M: applys inst_list_a_inL_isMono Ib.
+				SL: applys subst_list_i_is_styvar_list SLa.
+				M: case M.
+				applys subst_list_i_mono_det SL2.
+				applys subst_list_i_mono_det SL3.
+
+				TySc: case TyScheme; try solve case TySc.
+
+				Ind: applys 1 IH ASL TLb TLa Wb Wa1 TySc _ I _ SL with Ai = mr1.
+					TL: applys tyvar_list_weaken TLb.
+						applys inst_list_ty_L_mono M TL. search.
+					% Main condition
+						intros Tys SL SL.
+						applys sty_inst_list_prune Tys.
+						applys subst_list_ty_fresh_det SL5.
+						SL: applys subst_list_total Tys with A = arrow (A1 n1) (B1 n1).
+						SL: applys subst_list_arrow_split SL7.
+						applys subst_list_det *SL8.
+						S: applys All Tys.
+						M: applys inst_list_a_inL_isMono S3.
+						I: applys inst_list_arrow_split S2.
+						S: case S4; M: case M2.
+						exists mr4, Ai5 n1.
+						TL: applys tyvar_list_weaken TLb.
+						I: applys inst_list_ty_L_mono TL with m = mr4.
+						search.
+
+				Ind: applys 1 IH ASL TLa TLb Wa2 Wb TySc1 _ SL3 with Bi = mr2.
+					TL: applys tyvar_list_weaken TLb.
+						applys inst_list_ty_L_mono M1 TL. search.
+					% Main condition
+						intros Tys SL SL.
+						applys sty_inst_list_prune Tys.
+						applys subst_list_ty_fresh_det SL6.
+						SL: applys subst_list_total Tys with A = arrow (A1 n1) (B1 n1).
+						SL: applys subst_list_arrow_split SL7.
+						applys subst_list_det *SL9.
+						S: applys All Tys.
+						M: applys inst_list_a_inL_isMono S3.
+						I: applys inst_list_arrow_split S2.
+						S: case S4; M: case M2.
+						exists Bi5 n1, mr5.
+						TL: applys tyvar_list_weaken TLb.
+						I: applys inst_list_ty_L_mono TL with m = mr5.
+						search.
+
+				search.
+
+			% B = ->
+				Wb: case Wb.
+				clear aux_B_ty aux_B_sty.
+
+				TySc: case TyScheme; try solve case TySc1; try solve case TySc2.
+
+				Ind: applys 1 IH ASL TLb TLa Wb Wa1 TySc.
+					intros Tys SL SL.
+					SL: applys subst_list_total Tys with A = B1.
+					SL: applys subst_list_total Tys with A = A5.
+					SL: applys subst_list_arrow_combine SL5 SL6.
+					SL: applys subst_list_arrow_combine SL4 SL7.
+
+					S: applys All Tys SL8 SL9.
+						I: applys inst_list_arrow_split S2.
+						I: applys inst_list_arrow_split S3.
+						case S4.
+						search.
+
+				Ind: applys 1 IH ASL TLa TLb Wa2 Wb1 I1 I3 SL1 SL3 TySc1.
+					intros Tys SL SL.
+					SL: applys subst_list_total Tys with A = A1.
+					SL: applys subst_list_total Tys with A = A4.
+					SL: applys subst_list_arrow_combine SL6 SL4.
+					SL: applys subst_list_arrow_combine SL7 SL5.
+
+					S: applys All Tys SL8 SL9.
+						I: applys inst_list_arrow_split S2.
+						I: applys inst_list_arrow_split S3.
+						case S4.
+						search.
+
+				search.
+
+	% A = forall
+		clear aux_A_ty aux_A_sty.
+		I: applys inst_list_all_match Ia.
+		SL: applys subst_list_i_all_match SLa.
+
+		B_neq_forall: assert notAll_ Bi -> (name Bi -> member (styvar Bi) SL -> false) -> sub SLE (all ai) Bi.
+			intros NotAll Not~a.
+			S: case S.
+			% top
+				SL: applys subst_list_i_is_styvar_list.
+				W: applys styvar_list_wfj. W: applys tyvar_list_wfj TLa.
+				W: applys inst_list_wft_f.
+				applys subst_list_i_top_inv.
+				search.
+			% inst
+				I: applys inst_list_ty_inst I S1.
+				Aa: assert append (tyvar n1 :: La) SLE (tyvar n1 :: LaE).
+				SL: applys subst_list_i_ty_inst_mono SL S1.
+
+				TySc: case TyScheme (keep); try solve case TySc; try solve case TySc1; try solve case TySc2;
+					try applys notAll_false TySc1;
+					try solve (applys inst_list_all_match Ib; applys notAll_false NotAll).
+
+				Ind: applys 1 IH ASL Aa1 I1 Ab Ib TySc.
+					intros Tys SL SL. applys sty_inst_list_prune Tys.
+					SL: applys subst_list_total Tys with A = all A1.
+					SL: applys subst_list_all_match SL4.
+					applys subst_list_det *SL5.
+					S: applys All Tys SL4 SL3.
+					applys inst_list_prune_Ai S5.
+					I: applys inst_list_all_match S4.
+					S: case S6 (keep).
+					% top
+						W: case S7.
+							exists ai3 n2 i, top.
+								I: applys inst_list_ty_inst I2 with m = i, a = n2.
+								split. search. search.
+								W: applys sub_wft S6.
+								W: applys wft_open with A = ai3 n2, B = i.
+								search.
+					% inst
+						applys mono_prune S8.
+						exists ai3 n2 m2, Ar n2.
+						I: applys inst_list_ty_inst I2 S8 with a = n2.
+						applys subst_list_prune_R SL3.
+						search.
+					% forall
+						I: applys inst_list_all_match_inv S5.
+						SL: applys subst_list_all_match_inv SL3.
+						SL: case SL5.
+							case SL5.
+								applys tyvar_list_prune_L_sty TLb. backchain append_mem.
+								applys inst_list_ty_det Ib.
+								applys Not~a.
+							applys inst_list_all_match Ib.
+								applys notAll_false NotAll.
+
+				M: applys mono_weaken_f S1.
+				FV: assert inFV ai.
+					SL: applys subst_list_i_is_styvar_list.
+					W: applys styvar_list_wfj. W: applys tyvar_list_wfj TLa.
+					W: applys inst_list_wft_f. W: case W2. search.
+				search.
+			% forall
+				I: applys subst_list_i_all_match_inv SLb.
+				applys notAll_false NotAll.
+		Wb: case Wb (keep);
+			try solve (applys inst_list_simple_type_det Ib; backchain B_neq_forall; intros h; case h).
+		% B = b
+			B: applys *aux_B_ty. B: case B.
+				% B \in L
+					case B1. rename L to SLE.
+					applys append_prune ASL. rename FA to SL'. rename FB to E.
+					applys mono_prune B2.
+					backchain B_neq_forall.
+						case B2; search.
+						intros h M. M: case B2; case h.
+							applys subst_list_i_prune_sty_E SLa. applys member_prune M1.
+				% B \in E
+					backchain B_neq_forall.
+						intros h M. applys subst_list_i_prune_sty_E SLa. applys member_prune B.
+		% B = ~b
+			B: applys *aux_B_sty. B: case B.
+			% ~b \in SL
+				STL: applys subst_list_i_is_styvar_list SLa.
+				Tys: applys sty_inst_list_exists_a STL with T = bot.
+				permute (n1 n2) Tys. permute (n1 n2) Tys1.
+				SL: applys subst_list_sty Tys1.
+				SL: applys subst_list_total Tys with A = (all (A1 n2)).
+				applys subst_list_prune_sty_R Tys SL2. rename E1 to E.
+				SL: applys subst_list_all_match SL2.
+				S: applys All SL2 SL1.
+					I: applys inst_list_all_match S1. I: applys inst_list_bot_det S2.
+					applys sub_all_bot_false S3.
+			% ~b \in E
+				backchain B_neq_forall.
+					intros h M. case B1. applys member_prune M.
+		% B = ->
+			applys inst_list_arrow_split Ib. backchain B_neq_forall.
+			intros h M. case h.
+		% B = forall
+			clear aux_B_ty aux_B_sty.
+			I: applys inst_list_all_match Ib.
+			SL: applys subst_list_i_all_match SLb.
+			Wa: applys wft_ty_sty *Wa1. Wb: applys wft_ty_sty *Wb1.
+			ASL: assert append (styvar n1 :: SL) E (styvar n1 :: SLE).
+			Aa: applys append_total_E Aa with B = styvar n1 :: SLE. rename C to LaE'.
+			Ab: applys append_total_E Ab with B = styvar n1 :: SLE. rename C to LbE'.
+			Wa: applys wft_sty_move_back Wa1 with F = La.
+			Wb: applys wft_sty_move_back Wb1 with F = Lb.
+
+			TySc: case TyScheme; try solve applys notAll_false TySc1; try solve case TySc.
+
+			S: case S. applys notAll_false S2.
+			SLI: applys subst_list_i_sty_i SL.
+			SLI: applys subst_list_i_sty_i SL1.
+			TLa: applys tyvar_list_add_sty TLa.
+			TLb: applys tyvar_list_add_sty TLb.
+			S: applys sub_subst S. S: applys sub_strenthen_styvar *S3.
+			Ind: applys 1 IH Wa3 Wb3 I I1 SLI SLI1 TLa1 TLb1.
+				intros Tys SL SL.
+				Tys: case Tys.
+				SL: case SL2. SL: case SL3.
+				SL: applys subst_list_subst_all_inv SL2 with A = A1.
+				SL: applys subst_list_subst_all_inv SL3 with A = A2.
+				S: applys All Tys1.
+				I: applys inst_list_all_match S4.
+				I: applys inst_list_all_match S5.
+				I: applys inst_list_ty_inst_wft I2 Tys.
+				I: applys inst_list_ty_inst_wft I3 Tys.
+				S: case S6. applys notAll_false S8.
+				W: applys wft_weaken_sty Tys.
+				S: applys sub_subst_wft W S6.
+				S: applys sub_strenthen_styvar S9.
+				search.
+
+			% FV
+			FV: assert inFV ai /\ inFV ai2.
+				SL: applys subst_list_i_is_styvar_list.
+				W: applys styvar_list_wfj.
+				W: applys tyvar_list_wfj TLa. W: applys inst_list_wft_f Ia. W: case W2.
+				W: applys tyvar_list_wfj TLb. W: applys inst_list_wft_f Ib. W: case W5.
+				search.
+			FV: case FV.
+			search.
+
+
+Theorem wft_ty_scheme_2 : forall E F A B,
+	wft E A -> wft F B -> ty_scheme_2 A B /\ ty_scheme_2 B A.
+induction on 1. induction on 2. intros Wa Wb. split.
+	Wa: case Wa (keep); try solve (Wb: case Wb; try search; try applys IH1 Wb; try applys IH1 Wb1; try search).
+	% A = ->
+		applys IH Wa1 Wb. applys IH Wa2 Wb.
+		Wb: case Wb; try search.
+		% B = ->
+			applys IH1 Wa1 Wb. applys IH1 Wa2 Wb1. search.
+		% B = forall
+			applys IH1 Wa Wb. search.
+	% A = forall
+		applys IH Wa1 Wb.
+		Wb: case Wb; try search.
+		% B = forall
+			applys IH1 Wa1 Wb. search.
+	Wa: case Wa (keep); try solve (Wb: case Wb; try search; try applys IH1 Wb; try applys IH1 Wb1; try search).
+	% A = ->
+		applys IH Wa1 Wb. applys IH Wa2 Wb.
+		Wb: case Wb; try search.
+		% B = ->
+			applys IH1 Wa1 Wb. applys IH1 Wa2 Wb1. search.
+		% B = forall
+			applys IH1 Wa Wb. search.
+	% A = forall
+		applys IH Wa1 Wb.
+		Wb: case Wb; try search.
+		% B = forall
+			applys IH1 Wa1 Wb. search.
+
+
+Theorem sub_any_inst_implys_forall : forall A B E,
+	wft E (all A) -> wft E (all B) -> wfj E ->
+	(forall C, wft E C -> sub E (A C) (B C)) -> sub E (all A) (all B).
+intros W W E All.
+	W: case W. W: case W1.
+	W: applys wft_ty_sty W. W: applys wft_ty_sty W1.
+	S: applys All with C = i.
+	S: applys sub_C_sty W4 W5 with La = nil, Lb = nil, SL = styvar n1 :: nil, E = E, Asi = A i, Bsi = B i.
+		applys wft_ty_scheme_2 W4 W5. search.
+		search. search.
+		intros W SL SL. exists As n1, Bs n1.
+			split. search. search.
+			Tys: case W6. case Tys1.
+			SL: case SL. SL: case SL.
+			SL: case SL1. SL: case SL.
+			S: applys All with C = A1.
+			search.
+	search.
+
+
+
+Theorem sub_complete_wrt_stable : forall E A B,
+	wft E A -> wft E B -> wfj E ->
+	sub_stable E A B -> sub E A B.
+induction on 4. intros W W E S. S: case S (keep); try search.
+	backchain sub_refl.
+	W: case W. W: case W1.
+		S: applys IH S1. S: applys IH S2. search.
+	W: case W.
+		W: applys wft_inst_mono.
+		S: applys IH.
+		search.
+	% all
+		S: applys sub_any_inst_implys_forall W W1.
+			intros W.
+			S: applys S1 W2.
+			W: applys wft_inst W W2. W: applys wft_inst W1 W2.
+			S: applys IH. search.
+		search.
+
+
+
+
+
+
+
+Theorem sub_B_sty_inv : forall E A, nabla a,
+	wfj (E a) -> sub (E a) (A a) a -> member (styvar a) (E a) -> A = z\ z \/ A = z\ bot.
+induction on 2. intros. case H2; try search.
+	applys IH. applys mono_prune_styvar H5. case H8.
+		case H9. applys inFV_false H7.
+		case H9. applys inFV_false H7. case H5.
+
+
+Theorem sub_sound_wrt_stable_trans : forall SL SLE E Tys A B As Bs,
+	append SL E SLE -> wfj E ->
+	sty_inst_list SL E Tys ->
+	subst_list Tys A As -> subst_list Tys B Bs ->
+	sub SLE A B -> sub_stable E As Bs.
+induction on 6. intros A E Tys SLa SLb S. S: case S (keep).
+% i <: i
+	applys subst_list_wft_det SLa.
+	applys subst_list_wft_det SLb.
+	search.
+% A <: top
+	applys subst_list_wft_det SLb.
+	W: applys subst_list_SLE_wft SLa.
+	search.
+% bot <: B
+	applys subst_list_wft_det SLa.
+	W: applys subst_list_SLE_wft SLb.
+	search.
+% a <: a
+	M: applys append_mem_inv A. M: case M.
+	% false
+		SL: applys subst_list_is_styvar_list SLa.
+		applys styvar_list_ty_false M.
+	% a \in E
+		applys subst_list_wft_det Tys SLa.
+		applys subst_list_wft_det Tys SLb.
+		search.
+% ~a <: ~a
+	M: applys append_mem_inv A. M: case M.
+	% ~a \in SL
+		Tys: applys sty_inst_list_exists_T M.
+		applys subst_list_sty_det_mem Tys SLa.
+		applys subst_list_sty_det_mem Tys SLb.
+		search.
+	% ~a \in E   false
+		applys sty_inst_list_prune_sty_SL Tys.
+		applys subst_list_sty_E_id Tys SLa.
+		applys subst_list_sty_E_id Tys SLb.
+		search.
+% -> <: ->
+	SLa: applys subst_list_arrow_split SLa.
+	SLb: applys subst_list_arrow_split SLb.
+	S: applys IH S1. S: applys IH S2.
+	search.
+% \forall a. A <: B
+	SL: applys subst_list_all_match SLa.
+	W: applys sub_wft S.
+	notAll: assert notAll_ Bs.
+		W: case W1;
+			try solve (applys subst_list_wft_det SLb; search).
+		% a
+			M: applys append_mem_inv A. M: case M.
+			% false
+				SL: applys subst_list_is_styvar_list SLa.
+				applys styvar_list_ty_false M.
+			% a \in E
+				applys subst_list_wft_det Tys SLb.
+				search.
+		% ~a   false
+			Eq: applys sub_B_sty_inv S. backchain sty_inst_list_wfj.
+			Eq: case Eq.
+		% ->
+			SL: applys subst_list_arrow_split SLb.
+			search.
+		% forall
+			applys notAll_false S3.
+	M: applys sty_inst_list_mono.
+	SL: applys subst_list_ty_inst_mono Tys SL.
+	S: applys IH.
+	W: applys subst_list_SLE_wft. W: case W2.
+	search.
+% \forall a. A <: \forall a. B
+	SLa: applys subst_list_all_match SLa.
+	SLb: applys subst_list_all_match SLb.
+	W: applys sub_wft S.
+	W: applys subst_list_SLE_wft SLa.
+	W: applys subst_list_SLE_wft SLb.
+	W: case W2. W: case W3.
+	unfold (all). right.
+	% C
+		intros WC.
+		Tys: assert sty_inst_list (styvar n1 :: SL) E (inst n1 C :: Tys).
+		SLa: applys subst_list_ty_inst_wft WC SLa1.
+		SLb: applys subst_list_ty_inst_wft WC SLb1.
+		applys IH Tys1. search.
+
+
+Theorem sub_sound_wrt_stable : forall E A B,
+	wfj E -> sub E A B -> sub_stable E A B.
+intros. applys sub_sound_wrt_stable_trans. search.
+
+

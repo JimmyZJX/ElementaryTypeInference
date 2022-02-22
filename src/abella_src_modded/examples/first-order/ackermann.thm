@@ -1,0 +1,26 @@
+%% Proof that the Ackermann function is total
+%%
+%% This is a very small example that requires nested inductions.
+
+Kind     nat     type.
+
+Type     z       nat.
+Type     s       nat -> nat.
+
+
+Define nat : nat -> prop by
+  nat z ;
+  nat (s X) := nat X.
+
+Define ack : nat -> nat -> nat -> prop by
+  ack z N (s N) ;
+  ack (s M) z R := ack M (s z) R ;
+  ack (s M) (s N) R := exists R', ack (s M) N R' /\ ack M R' R.
+
+Theorem ack_total : forall M N,
+  nat M -> nat N -> exists R, nat R /\ ack M N R.
+induction on 1. induction on 2. intros. case H1 (keep).
+  search.
+  case H2.
+    apply IH to H3 _ with N = s z. search.
+    apply IH1 to H1 H4. apply IH to H3 H5. search.

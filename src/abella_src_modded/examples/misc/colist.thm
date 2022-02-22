@@ -1,0 +1,93 @@
+%% Results on (potentially) infinite lists
+
+Kind     nat          type.
+Type     z            nat.
+Type     s            nat -> nat.
+
+CoDefine colist : olist -> prop by
+  colist nil ;
+  colist (X :: L) := colist L.
+
+CoDefine eqi : olist -> olist -> prop by
+  eqi nil nil ;
+  eqi (X :: L) (X :: R) := eqi L R.
+
+Define tk : nat -> olist -> olist -> prop by
+  tk z L nil ;
+  tk N nil nil ;
+  tk (s N) (X :: L) (X :: R) := tk N L R.
+
+Define eqf : olist -> olist -> prop by
+  eqf L R := (forall N S, tk N L S -> tk N R S) /\
+             (forall N S, tk N R S -> tk N L S).
+
+
+%% First we show eqi implies eqf
+
+Theorem eqi_take : forall L R S N,
+  eqi L R -> tk N L S -> tk N R S.
+induction on 2. intros. case H2.
+  search.
+  case H1. search.
+  case H1. apply IH to H4 H3. search.
+
+Theorem eqi_sym : forall L R,
+  eqi L R -> eqi R L.
+coinduction. intros. case H1.
+  search.
+  apply CH to H2. search.
+
+Theorem eqi_eqf : forall L R,
+  eqi L R -> eqf L R.
+intros. unfold.
+  intros. apply eqi_take to H1 H2. search.
+  intros. apply eqi_sym to H1. apply eqi_take to H3 H2. search.
+
+
+%% Second we show eqf implies eqi
+
+Theorem eqf_nil : forall L,
+  eqf nil L -> L = nil.
+intros. case H1.
+  apply H2 to _ with N = s z. case H4. search.
+
+Theorem eqf_cons : forall X L R,
+  eqf (X :: L) R -> exists S, R = X :: S.
+intros. case H1. apply H2 to _ with N = s z.
+  case H4. search.
+
+Theorem eqf_sym : forall L R,
+  eqf L R -> eqf R L.
+intros. case H1. search.
+
+Theorem eqf_downward : forall X L R,
+  eqf (X :: L) (X :: R) -> eqf L R.
+intros. case H1. unfold.
+  intros. assert tk (s N) (X :: L) (X :: S). apply H2 to H5.
+    case H6. search.
+  intros. assert tk (s N) (X :: R) (X :: S). apply H3 to H5.
+    case H6. search.
+
+Theorem eqf_eqi : forall L R,
+  colist L -> eqf L R -> eqi L R.
+coinduction. intros. case H1.
+  apply eqf_nil to H2. search.
+  apply eqf_cons to H2. apply eqf_downward to H2.
+    apply CH to H3 H4. search.
+
+
+% We define co-inductive append and show it is associative
+
+CoDefine coapp : olist -> olist -> olist -> prop by
+  coapp (X :: A) B (X :: C) := coapp A B C ;
+  coapp nil (X :: B) (X :: C) := coapp nil B C ;
+  coapp nil nil nil.
+
+Theorem coapp_assoc : forall A B C AB ABC BC,
+  coapp A B AB -> coapp AB C ABC -> coapp B C BC -> coapp A BC ABC.
+coinduction. intros. case H1.
+  case H2. apply CH to H4 H5 H3. search.
+  case H2. case H3. apply CH to H4 H5 H6. search.
+  case H2.
+    case H3. apply CH to _ H4 H5. search.
+    case H3. search.

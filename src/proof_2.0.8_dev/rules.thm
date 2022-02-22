@@ -1,0 +1,315 @@
+Import "nat".
+
+% Type
+Kind ty type.
+
+Type i      ty.
+Type all    (ty -> ty) -> ty.
+Type arrow  ty -> ty -> ty.
+Type top    ty.
+Type bot    ty.
+
+Type tyvar  ty -> o.
+Type exvar  ty -> o.
+Type styvar ty -> o.
+
+% Term
+Kind tm type.
+
+Type unit   tm.
+Type lam    (tm -> tm) -> tm.
+Type app    tm -> tm -> tm.
+Type anno   tm -> ty -> tm.
+Type tApp   tm -> ty -> tm.
+Type tAnno  (ty -> tm) -> (ty -> ty) -> tm. % /\a. e : A
+
+Type of     tm -> ty -> o.
+
+Define inFV : (ty -> ty) -> prop by
+	inFV A := (exists Ar, A = x\ Ar) -> false.
+
+% Well-formness
+Define wft : olist -> ty -> prop by
+	wft E i;
+	wft E top;
+	wft E bot;
+	nabla x, wft (E x) x := nabla x, member (tyvar x) (E x);
+	nabla x, wft (E x) x := nabla x, member (styvar x) (E x);
+	wft E (arrow A B) := wft E A /\ wft E B;
+	wft E (all A) := nabla x, wft (tyvar x :: E) (A x) /\ inFV A.
+
+Define env : olist -> prop by
+	env nil;
+	nabla x, env (tyvar x :: E) := env E;
+	nabla x, env (of x A :: E) := env E /\ wft E A.
+
+Define mono : olist -> ty -> prop by
+	mono E i;
+	nabla x, mono (E x) x := nabla x, member (tyvar x) (E x);
+	mono E (arrow A B) := mono E A /\ mono E B.
+
+% well-formed algorithmic type
+Define wfta : olist -> ty -> prop by
+	wfta E i;
+	wfta E top;
+	wfta E bot;
+	nabla x, wfta (E x) x := nabla x, member (tyvar x) (E x);
+	nabla x, wfta (E x) x := nabla x, member (styvar x) (E x);
+	nabla x, wfta (E x) x := nabla x, member (exvar x) (E x);
+	wfta E (arrow A B) := wfta E A /\ wfta E B;
+	wfta E (all A) := nabla x, wfta (tyvar x :: E) (A x) /\ inFV A.
+
+Define notAll_ : ty -> prop by notAll_ A := forall a, A = all a -> false.
+Define notLam_ : tm -> prop by notLam_ X := forall x, X = lam x -> false.
+
+Theorem notAll_false : forall A, notAll_ (all A) -> false.
+intros. case H1. apply H2 to _.
+Theorem notLam_false : forall X, notLam_ (lam X) -> false.
+intros. case H1. apply H2 to _.
+
+Define wftm : olist -> tm -> prop by
+	wftm E unit;
+	nabla x, wftm (E x) x := exists A, nabla x, member (of x A) (E x);
+	wftm E (lam X) := exists A, nabla x, wfta E A /\ wftm (of x A :: E) (X x);
+	wftm E (app X Y) := wftm E X /\ wftm E Y;
+	wftm E (anno X A) := wftm E X /\ wfta E A;
+	wftm E (tApp X A) := wftm E X /\ wfta E A;
+	wftm E (tAnno X A) := nabla a, wftm (tyvar a :: E) (X a) /\ wfta E (all A).
+
+Kind judgment type.
+
+Type j        judgment -> o.
+
+Type subty    ty -> ty -> judgment.
+Type check    tm -> ty -> judgment.
+Type infer    tm -> ty -> judgment.
+Type inferApp ty -> tm -> ty -> judgment.
+
+Type equal    ty -> ty -> judgment.
+
+Type inferC    tm -> (ty -> judgment) -> judgment.
+Type inferAppC ty -> tm -> (ty -> judgment) -> judgment.
+Type typeAppC  ty -> ty -> (ty -> judgment) -> judgment.
+
+% Algorithmic well-formed judgments
+Define wfjg : olist -> judgment -> prop by
+	wfjg E (subty A B) := wfta E A /\ wfta E B;
+	wfjg E (check X A) := wftm E X /\ wfta E A;
+	wfjg E (inferC X J) := nabla x, wftm E X /\ wfjg (tyvar x :: E) (J x);
+	wfjg E (inferAppC A X J) := nabla x, wftm E X /\ wfta E A /\ wfjg (tyvar x :: E) (J x);
+	wfjg E (typeAppC A B J) := nabla x, wfta E A /\ wfta E B /\ wfjg (tyvar x :: E) (J x).
+
+Define wfj : olist -> prop by
+	wfj nil;
+	nabla x, wfj (tyvar x :: E) := wfj E;
+	nabla x, wfj (styvar x :: E) := wfj E;
+	nabla x, wfj (exvar x :: E) := wfj E;
+	nabla x, wfj (of x A :: E) := wfj E /\ wfta E A;
+	wfj (j J :: E) := wfj E /\ wfjg E J.
+
+% Define subEnv : olist -> olist -> prop by
+% 	subEnv (sMark :: E) E;
+% 	nabla x, subEnv (tyvar x :: E) F := subEnv E F;
+% 	nabla x, subEnv (exvar x :: E) F := subEnv E F;
+% 	nabla x, subEnv (of x A :: E) F := subEnv E F;
+% 	subEnv (j J :: E) F := subEnv E F.
+
+% Declarative subtyping
+Define sub : olist -> ty -> ty -> prop by
+	sub E i i;
+	sub E A top := wft E A;
+	sub E bot A := wft E A;
+	nabla x, sub (E x) x x := nabla x, member (tyvar x) (E x);
+	nabla x, sub (E x) x x := nabla x, member (styvar x) (E x);
+	sub E (arrow A1 A2) (arrow B1 B2) := sub E B1 A1 /\ sub E A2 B2;
+	sub E (all A) B := exists m, sub E (A m) B /\ mono E m /\ notAll_ B /\ inFV A;
+	% sub E A (all B) := nabla x, sub (tyvar x :: E) A (B x).
+	% sub E (all A) (all B) := nabla x, sub (tyvar x :: E) (A x) (B x) /\ inFV A /\ inFV B.
+	sub E (all A) (all B) := nabla x, sub (styvar x :: E) (A x) (B x) /\ inFV A /\ inFV B.
+	% sub E (all A) (all B) := (forall C, wft E C -> sub E (A C) (B C)) /\ inFV A /\ inFV B.
+
+
+Define chk : olist -> tm -> ty -> prop,
+       inf : olist -> tm -> ty -> prop,
+       infApp : olist -> ty -> tm -> ty -> prop by
+	nabla x, inf (E x) x A := nabla x, member (of x A) (E x);
+	inf E (anno X A) A := chk E X A;
+	inf E (tAnno X A) (all A) := nabla x, wft E (all A) /\ chk (tyvar x :: E) (X x) (A x);
+	inf E unit i;
+	chk E X top := wftm E X;
+	chk E X (all A) := nabla x, chk (tyvar x :: E) X (A x) /\ wft E (all A);
+	chk E (lam X) (arrow A B) := nabla x, wft E A /\ chk (of x A :: E) (X x) B;
+	inf E (lam X) (arrow M1 M2) := nabla x,
+		mono E (arrow M1 M2) /\ chk (of x M1 :: E) (X x) M2;
+	inf E (app X1 X2) C := exists A, inf E X1 A /\ infApp E A X2 C;
+	inf E (tApp X B) bot := wft E B /\ inf E X bot;
+	inf E (tApp X B) (A B) := wft E B /\ inf E X (all A);
+	chk E X B := /*notLam_ X /\*/ notAll_ B /\ exists A, inf E X A /\ sub E A B;
+	infApp E (all A) X C := exists m, infApp E (A m) X C /\ mono E m /\ wft E (all A);
+	infApp E (arrow A C) X C := chk E X A /\ wft E C;
+	infApp E bot X bot := wftm E X.
+
+% Judgment list manipulation
+Define instJs : (ty -> olist) -> (ty -> ty -> olist) -> prop by
+	instJs E F := exists E1 E2, nabla x y z,
+		append (E1 x) (exvar x :: E2) (E x) /\
+		append (E1 (arrow y z)) (exvar z :: exvar y :: E2) (F y z).
+
+Define member2 : o -> o -> olist -> prop by
+	member2 A B E := exists E1 E2 E3, split3 E3 (B :: E2) (A :: E1) E.
+
+Define solveTyY : (ty -> ty -> olist) -> (ty -> ty -> olist) -> prop by
+	solveTyY E F := exists E1 E2 E3, nabla x y,
+		split3 (E3 x y) (exvar y :: E2 x) (tyvar x :: E1) (E x y) /\
+			split3 (E3 x y) (E2 x) (tyvar x :: E1) (F x y).
+
+Define solveExY : (ty -> ty -> olist) -> (ty -> ty -> olist) -> prop by
+	solveExY E F := exists E1 E2 E3, nabla x y,
+		split3 (E3 x y) (exvar y :: E2 x) (exvar x :: E1) (E x y) /\
+			split3 (E3 x y) (E2 x) (exvar x :: E1) (F x y).
+
+Define solveX : (ty -> olist) -> (ty -> olist) -> prop by
+	solveX E F := exists E1 E2, nabla x,
+		append (E2 x) (exvar x :: E1) (E x) /\ append (E2 x) E1 (F x).
+
+% Algorithmic Solver
+Define judge : olist -> prop by
+% empty
+	judge nil;
+
+% declarations
+	nabla x, judge (tyvar x :: E) := judge E;
+	nabla x, judge (styvar x :: E) := judge E;
+	nabla x, judge (exvar x :: E) := judge E;
+	nabla x, judge (of x A :: E) := judge E;
+
+% Subtyping
+	judge (j (subty A top) :: E) := judge E;
+	judge (j (subty bot B) :: E) := judge E;
+
+	judge (j (subty i i) :: E) := judge E;
+	nabla x, judge (j (subty x x) :: E x) :=
+			nabla x, member (tyvar x) (E x) /\ judge (E x);
+	nabla x, judge (j (subty x x) :: E x) :=
+			nabla x, member (styvar x) (E x) /\ judge (E x);
+	nabla x, judge (j (subty x x) :: E x) :=
+			nabla x, member (exvar x) (E x) /\ judge (E x);
+
+	judge (j (subty (arrow A1 A2) (arrow B1 B2)) :: E) :=
+			judge (j (subty B1 A1) :: j (subty A2 B2) :: E);
+	judge (j (subty (all A) B) :: E) := notAll_ B /\ inFV A /\ (B = top -> false) /\
+			nabla x, judge (j (subty (A x) B) :: exvar x :: E);
+	judge (j (subty (all A) (all B)) :: E) := inFV A /\ inFV B /\
+			nabla x, judge (j (subty (A x) (B x)) :: styvar x :: E);
+
+	% overlapping case: top/bot
+	% nabla x, judge (j (subty x (A x)) :: E x) := exists F,
+	% 		solveX E F /\ judge (F bot);
+	% nabla x, judge (j (subty (A x) x) :: E x) := exists F,
+	% 		solveX E F /\ judge (F top);
+
+	% inst, x \not\in FV(A) \cup FV(B)
+	nabla x, judge (j (subty x (arrow A B)) :: E x) := exists F, nabla y z,
+			instJs E F /\ judge (j (subty (arrow y z) (arrow A B)) :: F y z);
+	nabla x, judge (j (subty (arrow A B) x) :: E x) := exists F, nabla y z,
+			instJs E F /\ judge (j (subty (arrow A B) (arrow y z)) :: F y z);
+
+	% solve_*
+	nabla x y, judge (j (subty x y) :: E x y) := exists F, nabla x,
+			solveExY E F /\ judge (F x x);
+	nabla x y, judge (j (subty y x) :: E x y) := exists F, nabla x,
+			solveExY E F /\ judge (F x x);
+	nabla x y, judge (j (subty x y) :: E x y) := exists F, nabla x,
+			solveTyY E F /\ judge (F x x);
+	nabla x y, judge (j (subty y x) :: E x y) := exists F, nabla x,
+			solveTyY E F /\ judge (F x x);
+	nabla x, judge (j (subty x i) :: E x) := exists F,
+			solveX E F /\ judge (F i);
+	nabla x, judge (j (subty i x) :: E x) := exists F,
+			solveX E F /\ judge (F i);
+
+% Checking
+	% judge (j (check unit i) :: E) := judge E;
+	judge (j (check X (all A)) :: E) := nabla x,
+			judge (j (check X (A x)) :: tyvar x :: E);
+	judge (j (check (lam X) (arrow A B)) :: E) := nabla x,
+			judge (j (check (X x) B) :: of x A :: E);
+	nabla x, judge (j (check (lam (X x)) x) :: E x) := exists F, nabla t y z,
+			instJs E F /\ judge (j (check (X (arrow y z) t) z) :: of t y :: F y z);
+	judge (j (check X B) :: E) := (B = top -> false) /\ notAll_ B /\ notLam_ X /\
+			judge (j (inferC X (r\ subty r B)) :: E);
+	judge (j (check X top) :: E) := judge E;
+
+% Inference
+	nabla x, judge (j (inferC x (W x)) :: E x) := exists A, nabla x,
+			member (of x A) (E x) /\ judge (j (W x A) :: E x);
+	judge (j (inferC (anno X A) W) :: E) :=
+			judge (j (check X A) :: j (W A) :: E);
+	judge (j (inferC (tAnno X A) W) :: E) := nabla x,
+			judge (j (check (X x) (A x)) :: tyvar x :: j (W (all A)) :: E);
+	judge (j (inferC unit W) :: E) :=
+			judge (j (W i) :: E);
+	judge (j (inferC (lam X) W) :: E) := nabla t x y,
+			judge (j (check (X t) y) :: of t x :: j (W (arrow x y)) ::
+				exvar y :: exvar x :: E);
+	judge (j (inferC (app X1 X2) W) :: E) :=
+			judge (j (inferC X1 (w\ inferAppC w X2 W)) :: E);
+
+	judge (j (inferC (tApp X A) W) :: E) :=
+			judge (j (inferC X (b\ typeAppC b A W)) :: E);
+	judge (j (typeAppC (all A) B W) :: E) :=
+			judge (j (W (A B)) :: E);
+	judge (j (typeAppC bot B W) :: E) :=
+			judge (j (W bot) :: E);
+
+% Inference for application
+	judge (j (inferAppC (all A) X W) :: E) := nabla x,
+			judge (j (inferAppC (A x) X W) :: exvar x :: E);
+	judge (j (inferAppC (arrow A C) X W) :: E) :=
+			judge (j (check X A) :: j (W C) :: E);
+	judge (j (inferAppC bot X W) :: E) :=
+			judge (j (W bot) :: E);
+	nabla x, judge (j (inferAppC x (X x) (W x)) :: E x) := exists F, nabla y z,
+			instJs E F /\
+				judge (j (inferAppC (arrow y z) (X (arrow y z)) (W (arrow y z))) :: F y z);
+
+% Debug only
+	judge (j (equal A A) :: E) := judge E.
+
+Set witnesses on.
+
+Theorem ex1 : judge (j (inferC unit (r\ subty r i)) :: nil).
+search.
+
+Theorem ex2 : judge (j (inferC unit (r\ subty i r)) :: nil).
+search.
+
+Theorem ex3 : judge (j (inferC unit (r\ subty (arrow i i) r)) :: nil)
+	-> false.
+intros. case H1. case H2.
+
+Theorem ex4 : judge (j (check (app (lam x\ x) unit) i) :: nil).
+search 20.
+/*intros. unfold. unfold. unfold. intros. unfold. unfold. intros. unfold. unfold.
+	exists n1. intros. split. search. unfold 11.
+	exists x\ y\ exvar y :: exvar x :: mark :: nil.
+	intros. split. search. search 10.
+	unfold. unfold. unfold. unfold.
+	exists x\ exvar n2 :: exvar x :: mark :: nil. intros.
+	split. search. search. unfold.
+	exists nil. split. search. unfold.
+	search.*/
+% Or simply: search 20.
+
+Theorem ex5 : judge (j (inferC (app (lam x\ x) (anno (lam x\ x) (arrow i i)))
+		(r\ equal r (arrow i i))) :: nil).
+search 30.
+
+
+
+/*
+	TODO add the following rule
+		T |- [Top/a] A <: B
+		----------------------
+		T |- forall a . A <: B
+*/

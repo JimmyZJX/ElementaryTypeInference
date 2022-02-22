@@ -1,0 +1,151 @@
+Import "nonOverlap".
+
+
+
+Theorem infApp_sub_arrow : forall E B A C, nabla x,
+	infApp (of x B :: E) (A x) x (C x) -> wft E B -> sub (of x B :: E) (A x) (arrow B (C x)).
+induction on 1. intros D W. D: case D.
+% forall
+	applys mono_prune_tm D1.
+	D: applys IH.
+	M: assert mono E m1. skip.
+	W: case D2.
+	search.
+% arrow
+	W: assert wft E (C n1). skip.
+	S: applys sub_refl W1.
+	D: case D.
+	% top
+		unfold. applys wft_weaken_of W with T = B. search.
+		backchain sub_refl.
+	% forall
+		skip.
+	% x
+		D: case D2.
+		M: case D2.
+			unfold. search. backchain sub_refl.
+			applys member_prune_tm M.
+% bot
+	applys wft_weaken_of W with T = B.
+	search.
+
+Theorem infApp_sub : forall E A X C,
+	wfj E -> exFree E -> infApp E A X C -> exists B, sub E A (arrow B C) /\ chk E X B.
+induction on 3. intros W Ex D. D: case D.
+% forall
+	D: applys IH.
+	W: case D2.
+	search.
+% arrow
+	W: applys chk_wft D.
+	S: applys sub_refl with A = arrow A1 C.
+	search.
+% bot
+	search.
+
+
+Theorem chk_var_sub : forall E A B, nabla (x : tm),
+	chk (E x) x A -> member (of x B) (E x) -> wfj (E x) -> exFree (E x) ->
+	sub (E x) B A.
+induction on 1. intros D M W Ex. D: case D (keep).
+% top
+	W: applys wfj_of_wfta. W: applys exFree_wfta_wft W1. search.
+% forall
+	S: applys IH. backchain exFree_tyvar.
+	W: case D2.
+	skip.
+	skip.
+
+
+
+Theorem eta_sound : forall E X A,
+	wfj E -> exFree E ->
+	chk E (lam (x\ app X x)) A -> chk E X A.
+induction on 3. intros E Ex D.
+	W: applys chk_wftm D.
+	W: case W. W: case W1.
+	W: assert wftm E X. skip.
+	W: applys chk_wft D.
+	D: case D (keep).
+	% top
+		search.
+	% forall
+		D: applys IH. backchain exFree_tyvar.
+		search.
+	% ->
+		D: case D2 (keep).
+		% top
+			skip.
+		% forall
+			skip.
+		% sub
+			D: case D4.
+			W: case W4.
+			Ex: applys exFree_of with A = A2.
+			W: applys wft_wfta W4.
+			S: applys infApp_sub D6.
+			S: assert sub (of n1 A2 :: E) (A4 n1) (arrow A2 B).
+				S: assert sub (of n1 A2 :: E) A2 (B1 n1).
+					D: case S1.
+					% top
+						W: applys wft_weaken_of W4 with T = A2.
+						search.
+					% forall
+						skip.
+					% sub
+						D: case D8. M: case D8. search. applys member_prune_tm M.
+				S: assert sub (of n1 A2 :: E) (arrow (B1 n1) (A3 n1)) (arrow A2 B).
+				S: applys sub_trans S S3.
+				search.
+			W: applys inf_wft D4. applys wft_prune_tm W7.
+			D: assert inf E X Ar. skip. % strenthen
+			S: assert sub E Ar (arrow A2 B). skip. % strenthen
+			search.
+
+	% sub
+		D: case D2.
+		S: case D3. search.
+
+
+
+
+
+			 skip.
+			T: assert chk (of n1 A2 :: E) X (arrow A2 B).
+			skip. % strenthening
+		% % ->
+		% 	D: case D3 (keep). skip. skip.
+		% 	D: case D6 (keep).
+		% 	W: applys wft_wfta D1.
+		% 	W: applys infApp_wft D5. backchain exFree_of.
+		% 	applys wft_prune_tm W6. applys wft_prune_tm W7.
+		% 	S: applys infApp_sub_arrow D5.
+		% 	D: assert inf E X Ar. skip.
+		% 	S: applys sub_refl D1.
+		% 	D: assert sub E Ar1 B. skip.
+		% 	S: assert sub E (arrow A2 Ar1) (arrow A2 B).
+		% 	S: applys sub_trans S S2.
+		% 	search.
+		% skip.
+	% sub
+		D: case D2 (keep).
+		D: case D5 (keep).
+			D: case D4. case D7.
+			D: case D4. case D8.
+
+
+			% D: case D5 (keep).
+			% M: case D3. W: applys mono_wfta M.
+			% W: applys infApp_wft D8. backchain exFree_of.
+			% applys wft_prune_tm W6. applys wft_prune_tm W7.
+			% S: applys infApp_sub_arrow D8. backchain mono_wft.
+			% D: assert inf E X Ar. skip.
+			% W: applys mono_wft M. S: applys sub_refl W8.
+			% D: assert sub E Ar1 M2. skip.
+			% S: assert sub E (arrow M1 Ar1) (arrow M1 M2).
+			% S: applys sub_trans S S2.
+			% S: applys sub_trans S3 D2.
+			% search.
+
+
+

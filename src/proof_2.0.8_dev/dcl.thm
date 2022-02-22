@@ -1,0 +1,622 @@
+Import "depth".
+
+Define dcl : olist -> prop by
+	dcl nil;
+	nabla x, dcl (tyvar x :: E) := dcl E;
+	nabla x, dcl (styvar x :: E) := dcl E;
+	nabla x, dcl (of x A :: E) := dcl E;
+
+	dcl (j (subty i i) :: E) := dcl E;
+	dcl (j (subty A top) :: E) := dcl E /\ wft E A;
+	dcl (j (subty bot A) :: E) := dcl E /\ wft E A;
+	nabla x, dcl (j (subty x x) :: E x) := nabla x,
+		member (tyvar x) (E x) /\ dcl (E x);
+	nabla x, dcl (j (subty x x) :: E x) := nabla x,
+		member (styvar x) (E x) /\ dcl (E x);
+	dcl (j (subty (arrow A1 A2) (arrow B1 B2)) :: E) :=
+		dcl (j (subty B1 A1) :: j (subty A2 B2) :: E);
+	dcl (j (subty (all A) B) :: E) := notAll_ B /\ inFV A /\ (B = top -> false) /\
+		exists m, mono E m /\ dcl (j (subty (A m) B) :: E);
+	dcl (j (subty (all A) (all B)) :: E) := inFV A /\ inFV B /\ nabla x,
+		dcl (j (subty (A x) (B x)) :: styvar x :: E);
+
+	nabla x, dcl (j (inferC x (J x)) :: E x) := exists A, nabla x,
+		member (of x A) (E x) /\ dcl (j (J x A) :: E x);
+	dcl (j (inferC (anno X A) J) :: E) :=
+		dcl (j (check X A) :: j (J A) :: E);
+	dcl (j (inferC (tAnno X A) J) :: E) := nabla x,
+		wft E (all A) /\ dcl (j (check (X x) (A x)) :: tyvar x :: j (J (all A)) :: E);
+	dcl (j (check unit i) :: E) := dcl E;
+	dcl (j (inferC unit J) :: E) := dcl (j (J i) :: E);
+	dcl (j (check X top) :: E) := dcl E;
+	dcl (j (check X (all A)) :: E) := nabla x,
+		wft E (all A) /\ dcl (j (check X (A x)) :: tyvar x :: E);
+	dcl (j (check (lam X) (arrow A B)) :: E) := nabla x,
+		wft E A /\ dcl (j (check (X x) B) :: of x A :: E);
+	dcl (j (inferC (lam X) J) :: E) := exists M1 M2, nabla x,
+		mono E (arrow M1 M2) /\
+			dcl (j (check (X x) M2) :: of x M1 :: j (J (arrow M1 M2)) :: E);
+	dcl (j (inferC (app X1 X2) J) :: E) := dcl (j (inferC X1 (r\ inferAppC r X2 J)) :: E);
+	dcl (j (check X B) :: E) := (B = top -> false) /\ notLam_ X /\ notAll_ B /\
+		dcl (j (inferC X (r\ subty r B)) :: E);
+
+	dcl (j (inferC (tApp X B) J) :: E) :=
+		wft E B /\ dcl (j (inferC X (r\ typeAppC r B J)) :: E);
+	dcl (j (typeAppC (all A) B J) :: E) := dcl (j (J (A B)) :: E);
+	dcl (j (typeAppC bot B J) :: E) := dcl (j (J bot) :: E);
+
+	dcl (j (inferAppC (all A) X J) :: E) := exists m,
+		mono E m /\ wft E (all A) /\ dcl (j (inferAppC (A m) X J) :: E);
+	dcl (j (inferAppC bot X J) :: E) :=
+		dcl (j (J bot) :: E);
+	dcl (j (inferAppC (arrow A C) X J) :: E) :=
+		wft E C /\ dcl (j (check X A) :: j (J C) :: E).
+
+Theorem dc_unification_aux : forall J1 J2, J1 = J2 -> dc J1 -> dc J2.
+intros. case H1. search.
+
+Theorem inf_tApp_cons : forall E X A B,
+	wft E B -> inf E X (all A) -> inf E (tApp X B) (A B).
+intros. search.
+
+Theorem dcl_sound : forall E, wfj E -> dcl E -> dc E.
+induction on 2. intros. case H2. search.
+	case H1. apply IH to _ H3. search.
+	case H1. apply IH to _ H3. search.
+	case H1. apply IH to _ H3. search.
+	case H1. apply IH to _ H3. search.
+	case H1. apply IH to _ H3. search.
+	apply wfj_weaken1 to H1. apply IH to _ H3. search.
+	apply wfj_weaken1 to H1. apply IH to _ H4. search.
+	apply wfj_weaken1 to H1. apply IH to _ H4. search.
+	W: case H1. W: case W1. W: case W1. W: case W2.
+		W: apply wfta_weaken_j to W1 with J = subty A2 B2.
+		W: apply wfta_weaken_j to W2 with J = subty A2 B2.
+		D: apply IH to _ H3. D: case D. D: case D1. apply sub_remove_j to D. search.
+	W: case H1. W: case W1. W: apply mono_wfta to H6.
+		W: case W1. W: apply wfta_subst_tyvar to _ W1 W3.
+		D: apply IH to _ H7. /* GEN_BY_SCRIPT 
+		D: applys IH. */  D: case D. search.
+	W: case H1. W: case W1. W: case W2. W: case W1.
+		W: apply wfta_ty_sty to _ _ W2. /* GEN_BY_SCRIPT 
+		W: applys wfta_ty_sty W2. */  W: apply wfta_ty_sty to _ _ W1. /* GEN_BY_SCRIPT  W: applys wfta_ty_sty W1. */ 
+		D: apply IH to _ H5. /* GEN_BY_SCRIPT 
+		D: applys IH. */  D: case D. D: case D1. search.
+	W: case H1. W: case W1. W: apply wfj_of_wfta to _ H3.
+		W: apply wfjg_subst_tyvar to W2 _ _.
+		D: apply IH to _ H4. search.
+	W: case H1. W: case W1. W: case W1 (keep).
+		W: apply wfjg_subst_tyvar to W2 _ _.
+		W: apply wftm_weaken_j to W3 with J = J A.
+		W: apply wfta_weaken_j to W4 with J = J A.
+		D: apply IH to _ H3.
+		D: case D. D: apply chk_remove_j to D. search.
+	W: case H1.
+		D: apply IH to _ H4.
+			W: case W1. W: case W1 (keep).
+			W: apply wfjg_subst_tyvar to _ W4 _. /* GEN_BY_SCRIPT 
+			W: applys wfjg_subst_tyvar W4. */ 
+			W: apply wftm_weaken_j to W1 with J = J (all A). /* GEN_BY_SCRIPT 
+			W: applys wftm_weaken_j W1 with J = J (all A). */ 
+			W: case W6. W: case W7. search.
+			D: case D. D: case D1.
+			Thm: apply decl_remove_j_thm.
+			S: assert split3 (tyvar n1 :: nil) (j (J (all A)) :: nil) E1
+				(tyvar n1 :: j (J (all A)) :: E1).
+			D: apply Thm to S _ _ D. /* GEN_BY_SCRIPT 
+			D: applys Thm D S. */  search.
+	W: case H1.
+		D: apply IH to _ H3. search.
+	W: case H1. W: case W1.
+		W: apply wfjg_subst_tyvar to W2 _ _.
+		D: apply IH to _ H3. search.
+	W: case H1. W: case W1.
+		apply IH to _ H3. /* GEN_BY_SCRIPT 
+		applys IH. */  search.
+	W: case H1. W: case W1. W: case W2.
+		W: apply wftm_weaken_ty to W1.
+		D: apply IH to _ H4. /* GEN_BY_SCRIPT 
+		D: applys IH. */ 
+		D: case D. D: case D1.
+		search.
+	W: case H1. W: case W1. W: case W2. W: apply wftm_anyA to W1 with A = A.
+		W: apply wfta_weaken_of to W3 with A = A.
+		D: apply IH to _ H4.
+		D: case D. D: case D1. search.
+	W: case H1. W: case W1.
+		W: apply mono_wfta to H3.
+		W: apply wfjg_subst_tyvar to W2 W3 _.
+		W: apply wfta_weaken_j to W3 with J = J (arrow M1 M2). W: case W3.
+		W: apply wftm_weaken_j to W1 with J = J (arrow M1 M2).
+		W: apply wftm_anyA to W7 with A = M1.
+		W: case W5. W: apply wfta_weaken_of to W9 with A = M1.
+		D: apply IH to _ H4. D: case D.
+		T: apply decl_remove_j_thm.
+			S: assert split3 (of n1 M1 :: nil) (j (J (arrow M1 M2)) :: nil) E1
+				(of n1 M1 :: j (J (arrow M1 M2)) :: E1).
+			D: apply T to S _ _ D. D: case D1. search.
+	W: case H1. W: case W1. W: case W1.
+		W: apply wftm_weaken_ty to W3.
+		W: apply wfjg_weaken_tyvar_fresh to _ _ _ W2
+			with FxE = x\ tyvar n1 :: tyvar x :: E1.
+		D: apply IH to _ H3.
+		D: case D. D: case D1. search.
+	W: case H1. W: case W1. W: apply wfta_weaken_ty to W2. D: apply IH to _ H6. /* GEN_BY_SCRIPT  D: applys IH. */ 
+		D: case D. D: case D1. search.
+	% tApp
+	W: case H1. W: case W1 (keep). W: case W2.
+		W: apply wfta_weaken_ty to W4. /* GEN_BY_SCRIPT 
+		W: applys wfta_weaken_ty W4. */ 
+		W: apply wfjg_weaken_tyvar_fresh to _ _ _ W1 with FxE = x\ tyvar x :: E1. /* GEN_BY_SCRIPT 
+		W: applys wfjg_weaken_tyvar_fresh W1 with FxE = x\ tyvar x :: E1. */ 
+		W: case W6.
+		D: apply IH to _ H4. /* GEN_BY_SCRIPT 
+		D: applys IH. */ 
+		D: case D. D: case D1.
+			D: apply inf_tApp_cons to _ _ with B = B. /* GEN_BY_SCRIPT 
+			D: applys inf_tApp_cons with B = B. */  search.
+			search.
+	% typeAppC (all A)
+	W: case H1. W: case W1.
+		W: case W1.
+		W: apply wfta_subst_tyvar to _ W1 W2. /* GEN_BY_SCRIPT 
+		W: applys wfta_subst_tyvar W1 W2. */ 
+		W: apply wfjg_subst_tyvar to W3 W5 _. /* GEN_BY_SCRIPT 
+		W: applys wfjg_subst_tyvar W3 W5. */ 
+		D: apply IH to _ H3. /* GEN_BY_SCRIPT 
+		D: applys IH. */ 
+		search.
+	% typeAppC bot
+	W: case H1. W: case W1.
+		W: case W1.
+		W: apply wfjg_subst_tyvar to W3 _ _ with A = bot. /* GEN_BY_SCRIPT 
+		W: applys wfjg_subst_tyvar W3 with A = bot. */ 
+		D: apply IH to _ H3. /* GEN_BY_SCRIPT 
+		D: applys IH. */ 
+		search.
+
+	W: case H1. W: case W1.
+		W: case W2. W: apply mono_wfta to H3. W: apply wfta_subst_tyvar to _ W2 _.
+		D: apply IH to _ H5. /* GEN_BY_SCRIPT 
+		D: applys IH. */ 
+		D: case D.
+		search.
+	W: case H1. W: case W1. W: case W2.
+		W: apply wfjg_subst_tyvar to _ _ _ with A = bot. /* GEN_BY_SCRIPT 
+		W: applys wfjg_subst_tyvar with A = bot. */ 
+		apply IH to _ H3. /* GEN_BY_SCRIPT 
+		applys IH. */  search. 
+	W: case H1. W: case W1. W: case W2. W: apply wfjg_subst_tyvar to W3 W4 _.
+		W: apply wfta_weaken_j to W2 with J = J C.
+		W: apply wftm_weaken_j to W1 with J = J C.
+		D: apply IH to _ H4.
+		D: case D. D: apply chk_remove_j to D. search.
+
+
+Theorem mono_add_mid_j : forall F E FE FJE J m,
+	append F E FE -> append F (j J :: E) FJE -> mono FE m -> mono FJE m.
+induction on 3. intros. case H3. search.
+	apply append_mem_inv to H1 _. case H5.
+		apply append_mem to H2 _. search. apply append_mem to H2 _ with X = tyvar n1. search.
+	unfold. backchain IH. backchain IH.
+
+Theorem wft_add_mid_j : forall F E FE FJE J m,
+	append F E FE -> append F (j J :: E) FJE -> wft FE m -> wft FJE m.
+induction on 3. intros. case H3. search.
+	search. search.
+	apply mem_FE_FxE to _ _ H4 _. /* GEN_BY_SCRIPT 
+	applys mem_FE_FxE H4. */  search.
+	apply mem_FE_FxE to _ _ H4 _. /* GEN_BY_SCRIPT 
+	applys mem_FE_FxE H4. */  search.
+	unfold. backchain IH. backchain IH.
+	apply IH to _ _ H4 with F = tyvar n1 :: F. search.
+
+Theorem dcl_comp_thm : forall E Js JsE J JsJE,
+	append Js E JsE -> append Js (j J :: E) JsJE ->
+	dcl JsE -> dcl (j J :: E) -> wfj JsJE -> dcl JsJE.
+induction on 3. intros. case H1. case H2. search. case H3 (keep).
+	case H2. case H5. apply IH to _ H8 H7 _ _. search.
+	case H2. case H5. apply IH to _ H8 H7 _ _. search.
+	case H2. case H5. apply IH to _ H8 H7 _ _. search.
+	case H2. case H5. apply IH to _ H8 H7 _ _. search.
+	case H2. case H5. apply IH to _ H9 H7 _ _.
+		apply split3_alt to _ H9 with C = E. /* GEN_BY_SCRIPT 
+		applys split3_alt _ H9 with C = E. */ 
+		apply wft_weaken to H6 H13 H8. /* GEN_BY_SCRIPT 
+		applys wft_weaken H6 H13 H8. */  search.
+	case H2. case H5. apply IH to _ H9 H7 _ _.
+		apply split3_alt to _ H9 with C = E. /* GEN_BY_SCRIPT 
+		applys split3_alt _ H9 with C = E. */ 
+		apply wft_weaken to H6 H13 H8. /* GEN_BY_SCRIPT 
+		applys wft_weaken H6 H13 H8. */  search.
+	case H2. case H5. apply IH to _ H9 H8 _ _.
+		apply append_mem_inv to H6 _. case H13. apply append_mem to H9 _. search.
+			apply append_mem to H9 _ with X = tyvar n1. search.
+	case H2. case H5. apply IH to _ H9 H8 _ _.
+		apply append_mem_inv to H6 _. case H13. apply append_mem to H9 _. search.
+			apply append_mem to H9 _ with X = styvar n1. search.
+	case H2. case H5.
+		assert append (j (subty B1 A1) :: j (subty A2 B2) :: L1) (j J :: E)
+			(j (subty B1 A1) :: j (subty A2 B2) :: L5).
+		case H10. case H12. case H13.
+		apply wfta_weaken_j to H14 with J = subty A2 B2.
+		apply wfta_weaken_j to H16 with J = subty A2 B2.
+		apply IH to _ H11 H7 _ _. search.
+	case H2. case H5.
+		assert append (j (subty (A m) B) :: L1) (j J :: E) (j (subty (A m) B) :: L5).
+		apply mono_add_mid_j to H6 H12 _. case H14. case H17.
+		apply wfta_subst_tyvar to _ H19 _ with m = m. backchain mono_wfta.
+		apply IH to _ H15 H11 _ _. search.
+	case H2. case H5. case H12.
+		assert append (j (subty (A n1) (B n1)) :: styvar n1 :: L1) (j J :: E)
+			(j (subty (A n1) (B n1)) :: styvar n1 :: L5).
+		W: case H13. W: case H14.
+		W: apply wfta_ty_sty to _ _ W. /* GEN_BY_SCRIPT 
+		W: applys wfta_ty_sty W. */  apply wfta_ty_sty to _ _ W2. /* GEN_BY_SCRIPT  applys wfta_ty_sty W2. */ 
+		apply IH to _ H15 H9 _ _. search.
+	case H2. W: apply wfj_weaken1 to H5. case H5.
+		assert append (j (J1 n1 A) :: L1 n1) (j (J n1) :: E n1) (j (J1 n1 A) :: L5 n1).
+		M: assert member (of n1 A) (L5 n1).
+			apply append_mem_inv to H6 _. case H13. backchain append_mem. backchain append_mem.
+		W: apply wfj_of_wfta to _ M.
+		W: case H11. W: apply wfjg_subst_tyvar to W3 _ _.
+		apply IH to _ H12 H8 _ _. search.
+	case H2. W: case H5. W: case W1. W: case W1.
+		assert append (j (check X A) :: j (J1 A) :: L1) (j J :: E)
+			(j (check X A) :: j (J1 A) :: L5).
+		W: case H9 (keep).
+		W: apply wfjg_subst_tyvar to W2 _ _.
+		W: apply wftm_weaken_j to W1 with J = J1 A.
+		W: apply wfta_weaken_j to W3 with J = J1 A.
+		apply IH to _ H9 H7 _ _. search.
+	case H2. case H5.
+		A: assert append (j (check (X n1) (A n1)) :: tyvar n1 :: j (J1 (all A)) :: L1)
+			(j J :: E) (j (check (X n1) (A n1)) :: tyvar n1 :: j (J1 (all A)) :: L5).
+		W: case H11. W: case W (keep).
+		W: apply wfjg_subst_tyvar to _ W3 _. /* GEN_BY_SCRIPT 
+		W: applys wfjg_subst_tyvar W3. */ 
+		W: apply wftm_weaken_j to W with J = J1 (all A). /* GEN_BY_SCRIPT 
+		W: applys wftm_weaken_j W with J = J1 (all A). */ 
+		W: case W5. W: case W6.
+		D: apply IH to _ A H8 _ _. /* GEN_BY_SCRIPT 
+		D: applys IH _ A. */ 
+		W: apply wft_add_mid_j to _ _ _. /* GEN_BY_SCRIPT 
+		W: applys wft_add_mid_j. */  search.
+	case H2. case H5. apply IH to _ H8 H7 _ _. search.
+	case H2. W: case H5. W: case W1.
+		assert append (j (J1 i) :: L1) (j J :: E) (j (J1 i) :: L5).
+		apply wfjg_subst_tyvar to W2 _ _.
+		apply IH to _ H9 H7 _ _. search.
+	case H2. W: case H5. W: case W1.
+		apply IH to _ H8 H7 _ _. /* GEN_BY_SCRIPT 
+		applys IH _ H8. */  search.
+	case H2. W: case H5. W: case W1.
+		assert append (j (check X (A n1)) :: tyvar n1 :: L1) (j J :: E)
+			(j (check X (A n1)) :: tyvar n1 :: L5).
+		W: case W2. W: apply wftm_weaken_ty to W1.
+		apply IH to _ H10 H8 _ _.
+		W: apply wft_add_mid_j to _ _ _. /* GEN_BY_SCRIPT 
+		W: applys wft_add_mid_j. */  search.
+	case H2. W: case H5. case W1.
+		W: apply wftm_anyA to H10 with A = A. W: case H11.
+		W: apply wfta_weaken_of to W3 with A = A.
+		assert append (j (check (X n1) B) :: of n1 A :: L1) (j J :: E)
+			(j (check (X n1) B) :: of n1 A :: L5).
+		W: apply wft_add_mid_j to _ _ _.
+		apply IH to _ H12 H8 _ _. search.
+	case H2. W: case H5. W: case W1.
+		M: apply mono_add_mid_j to _ _ _. W: apply mono_wfta to M.
+		W: apply wfjg_subst_tyvar to W2 _ _.
+		W: apply wftm_weaken_j to W1 with J = J1 (arrow M1 M2).
+		W: apply wftm_anyA to W5 with A = M1.
+		W: apply wfta_weaken_j to W3 with J = J1 (arrow M1 M2).
+		W: case W7. W: apply wfta_weaken_of to W8 with A = M1.
+		assert append (j (check (X n1) M2) :: of n1 M1 :: j (J1 (arrow M1 M2)) :: L1)
+			(j J :: E) (j (check (X n1) M2) :: of n1 M1 :: j (J1 (arrow M1 M2)) :: L5).
+		apply IH to _ H10 H8 _ _. search.
+	case H2. W: case H5. W: case W1. W: case W1.
+		assert append (j (inferC X1 (r\inferAppC r X2 J1)) :: L1) (j J :: E)
+			(j (inferC X1 (r\inferAppC r X2 J1)) :: L5).
+		W: apply wftm_weaken_ty to W3.
+		W: apply wfjg_weaken_tyvar_fresh to _ _ _ W2
+			with FxE = x\ tyvar n1 :: tyvar x :: L5.
+		apply IH to _ H9 H7 _ _. search.
+	case H2. W: case H5. W: case W1.
+		assert append (j (inferC X (r\subty r B)) :: L1) (j J :: E)
+			(j (inferC X (r\subty r B)) :: L5).
+		W: apply wfta_weaken_ty to W2.
+		apply IH to _ H12 H10 _ _. search.
+	% tApp
+	case H2. W: case H5. W: case W1 (keep). W: case W2.
+		A: assert append (j (inferC X (r\typeAppC r B J1)) :: L1) E
+			(j (inferC X (r\typeAppC r B J1)) :: L3).
+		A: assert append (j (inferC X (r\typeAppC r B J1)) :: L1) (j J :: E)
+			(j (inferC X (r\typeAppC r B J1)) :: L5).
+		W: apply wfta_weaken_ty to W4. /* GEN_BY_SCRIPT 
+		W: applys wfta_weaken_ty W4. */ 
+		W: apply wfjg_weaken_tyvar_fresh to _ _ _ W3 with FxE = x\ tyvar n1 :: tyvar x :: L5. /* GEN_BY_SCRIPT 
+		W: applys wfjg_weaken_tyvar_fresh W3 with FxE = x\ tyvar n1 :: tyvar x :: L5. */ 
+		T: apply IH to A A1 H8 _ _. /* GEN_BY_SCRIPT 
+		T: applys IH A A1. */ 
+		W: apply wft_add_mid_j to _ _ _. /* GEN_BY_SCRIPT 
+		W: applys wft_add_mid_j. */ 
+		search.
+	% typeAppC all
+	case H2. W: case H5. W: case W1.
+		A: assert append (j (J1 (A B)) :: L1) E (j (J1 (A B)) :: L3).
+		A: assert append (j (J1 (A B)) :: L1) (j J :: E) (j (J1 (A B)) :: L5).
+		W: case W1. W: apply wfta_subst_tyvar to _ W1 W2. /* GEN_BY_SCRIPT  W: applys wfta_subst_tyvar W1 W2. */ 
+		W: apply wfjg_subst_tyvar to _ W5 _. /* GEN_BY_SCRIPT 
+		W: applys wfjg_subst_tyvar W5. */ 
+		apply IH to A A1 H7 _ _. /* GEN_BY_SCRIPT 
+		applys IH A A1. */  search.
+	% typeAppC bot
+	case H2. W: case H5. W: case W1.
+		A: assert append (j (J1 bot) :: L1) E (j (J1 bot) :: L3).
+		A: assert append (j (J1 bot) :: L1) (j J :: E) (j (J1 bot) :: L5).
+		W: apply wfjg_subst_tyvar to _ _ _ with A = bot. /* GEN_BY_SCRIPT 
+		W: applys wfjg_subst_tyvar with A = bot. */ 
+		apply IH to A A1 H7 _ _. /* GEN_BY_SCRIPT 
+		applys IH A A1. */  search.
+
+	case H2. W: case H5. W: case W1. W: case W2.
+		assert append (j (inferAppC (A m) X J1) :: L1) (j J :: E)
+			(j (inferAppC (A m) X J1) :: L5).
+		M: apply mono_add_mid_j to _ _ _. W: apply mono_wfta to M.
+		W: apply wfta_subst_tyvar to _ W2 _.
+		apply IH to _ H11 H9 _ _.
+		W: apply wft_add_mid_j to _ _ _. /* GEN_BY_SCRIPT 
+		W: applys wft_add_mid_j. */  search.
+	case H2. W: case H5. W: case W1. W: case W2.
+		W: apply wfjg_subst_tyvar to _ _ _ with A = bot. /* GEN_BY_SCRIPT 
+		W: applys wfjg_subst_tyvar with A = bot. */ 
+		A: assert append (j (J1 bot) :: L1) (j J :: E) (j (J1 bot) :: L5).
+		apply IH to _ A H7 _ _. /* GEN_BY_SCRIPT 
+		applys IH _ A. */  search.
+	case H2. W: case H5. W: case W1. W: case W2.
+		W: apply wfjg_subst_tyvar to W3 W4 _.
+		W: apply wftm_weaken_j to W1 with J = J1 C.
+		W: apply wfta_weaken_j to W2 with J = J1 C.
+		assert append (j (check X A) :: j (J1 C) :: L1) (j J :: E)
+			(j (check X A) :: j (J1 C) :: L5).
+		W: apply wft_add_mid_j to _ _ _.
+		apply IH to _ H10 H8 _ _. search.
+
+Theorem dcl_comp : forall E J1 J2, dcl (j J1 :: E) -> dcl (j J2 :: E) ->
+	wfj (j J1 :: j J2 :: E) -> dcl (j J1 :: j J2 :: E).
+intros. assert append (j J1 :: nil) (j J2 :: E) (j J1 :: j J2 :: E).
+	apply dcl_comp_thm to _ H4 _ _ H3. search.
+
+Theorem dcl_sub : forall E A B, wfj (j (subty A B) :: E) -> sub' E A B ->
+	dcl E -> dcl (j (subty A B) :: E).
+induction on 2. intros. case H2.
+	search. search. search. search. search.
+	W: case H1. W: case W1. W: case W1. W: case W2.
+		apply IH to _ H4 _. apply IH to _ H5 _. unfold.
+		W: apply wfta_weaken_j to W1 with J = subty A2 B2.
+		W: apply wfta_weaken_j to W2 with J = subty A2 B2.
+		apply dcl_comp to H6 H7 _. search.
+	W: case H1. W: case W1. W: case W1.
+		W: apply mono_wfta to H8.  W: apply wfta_subst_tyvar to _ W1 W4.
+		apply IH to _ H7 _. /* GEN_BY_SCRIPT 
+		applys IH. */  search.
+	W: case H1. W: case W1.
+		W: case W1. W: case W2.
+		W: apply wfta_ty_sty to _ _ W1. /* GEN_BY_SCRIPT 
+		W: applys wfta_ty_sty W1. */  W: apply wfta_ty_sty to _ _ W2. /* GEN_BY_SCRIPT  W: applys wfta_ty_sty W2. */ 
+		apply IH to _ H4 _. /* GEN_BY_SCRIPT 
+		applys IH. */  search.
+
+Theorem inf_app_wftm_wfta :
+	(forall E X A, inf E X A -> wfj E -> wftm E X -> wfta E A) /\
+	(forall E X A C, infApp E A X C -> wfj E -> wfta E A -> wftm E X -> wfta E C).
+induction on 1 1. split.
+	intros. case H1.
+		apply wfj_of_wfta to _ _. search.
+		W: case H3. search.
+		W: case H3. search.
+		W: case H3. search.
+		backchain mono_wfta.
+		case H3. apply IH to H4 _ _. apply IH1 to H5 _ _ _. search.
+		search.
+		W: case H3. W: apply IH to H5 _ _. /* GEN_BY_SCRIPT  W: applys IH. */  W: case W2.
+			W: apply wfta_subst_tyvar to _ W2 W1. /* GEN_BY_SCRIPT 
+			W: applys wfta_subst_tyvar W2 W1. */  search.
+	intros. case H1.
+		case H3. apply mono_wfta to H6. apply wfta_subst_tyvar to _ H8 _.
+			apply IH1 to H5 _ _ _. search.
+		case H3. search.
+		search.
+
+Split inf_app_wftm_wfta as inf_wftm_wfta, infApp_wftm_wfta.
+
+Theorem dcl_weaken : forall F E FE, append F E FE -> dcl FE -> dcl E.
+induction on 2. intros. case H2.
+	case H1. search.
+	case H1. search. backchain IH.
+	case H1. search. backchain IH.
+	case H1. search. backchain IH.
+	case H1. search. backchain IH.
+	case H1. search. backchain IH.
+	case H1. search. backchain IH.
+	case H1. search. backchain IH.
+	case H1. search. backchain IH.
+	case H1. search. backchain IH with F = j (subty B1 A1) :: j (subty A2 B2) :: L1.
+	case H1. search. backchain IH with F = j (subty (A m) B) :: L1.
+	case H1. search.
+		apply IH to _ H5 with F = j (subty (A n1) (B n1)) :: styvar n1 :: L1. search.
+	case H1. search. backchain IH with F = j (J n1 A) :: L1 n1.
+	case H1. search. backchain IH with F = j (check X A) :: j (J A) :: L1.
+	case H1. search.
+		apply IH to _ H4 with F = j (check (X n1) (A n1)) :: tyvar n1 :: j (J (all A)) :: L1. /* GEN_BY_SCRIPT 
+		applys IH with F = j (check (X n1) (A n1)) :: tyvar n1 :: j (J (all A)) :: L1. */  search.
+	case H1. search. backchain IH.
+	case H1. search. backchain IH with F = j (J i) :: L1.
+	case H1. search. backchain IH.
+	case H1. search.
+		apply IH to _ H4 with F = j (check X (A n1)) :: tyvar n1 :: L1. search.
+	case H1. search.
+		apply IH to _ H4 with F = j (check (X n1) B) :: of n1 A :: L1. search.
+	case H1. search. apply IH to _ H4 with
+		F = j (check (X n1) M2) :: of n1 M1 :: j (J (arrow M1 M2)) :: L1. search.
+	case H1. search. backchain IH with F = j (inferC X1 (r\inferAppC r X2 J)) :: L1.
+	case H1. search. backchain IH with F = j (inferC X (r\subty r B)) :: L1.
+	case H1. search. backchain IH with F = j (inferC X (r\typeAppC r B J)) :: L1.
+	case H1. search. backchain IH with F = j (J (A B)) :: L1.
+	case H1. search. backchain IH with F = j (J bot) :: L1.
+	case H1. search. backchain IH with F = j (inferAppC (A m) X J) :: L1.
+	case H1. search. backchain IH with F = j (J bot) :: L1.
+	case H1. search. backchain IH with F = j (check X A) :: j (J C) :: L1.
+
+
+Theorem dcl_chkInfApp :
+	(forall E X B, wfj (j (check X B) :: E) -> exFree E -> chk' E X B ->
+		dcl E -> dcl (j (check X B) :: E)) /\
+	(forall E X A J, wfj (j (inferC X J) :: E) -> exFree E -> inf' E X A ->
+		dcl (j (J A) :: E) -> dcl (j (inferC X J) :: E)) /\
+	(forall E A X C J, wfj (j (inferAppC A X J) :: E) -> exFree E -> infApp' E A X C ->
+		dcl (j (J C) :: E) -> dcl (j (inferAppC A X J) :: E)).
+induction on 3 3 3. split.
+	intros. case H3 (keep).
+		search. search.
+		W: case H1. W: case W1. W: case W2.
+			W: apply wftm_weaken_ty to W1.
+			apply IH to _ _ H5 _. backchain exFree_tyvar. search.
+		W: case H1. W: case W1. W: case W2.
+			W: apply wftm_anyA to W1 with A = A.
+			W: apply wfta_weaken_of to W3 with A = A.
+			apply IH to _ _ H6 _. backchain exFree_of. search.
+		W: case H1. W: case W1.
+			D: apply sub'_sound to H9. W: apply sub_wft to D.
+			W: apply wft_wfta to W3. W: apply wft_wfta to W4.
+			D: apply dcl_sub to _ H9 _.
+			W: apply wfta_weaken_ty to W2.
+			D: apply IH1 to _ _ H8 _ with J = A\ subty A B. search.
+	intros. case H3.
+		search.
+		apply dcl_weaken to _ H4 with F = j (J A) :: nil.
+			W: apply wfj_weaken1 to H1. W: case H1. W: case W2. W: case W2.
+			apply IH to _ _ H5 _.
+			W: apply wfjg_subst_tyvar to W3 _ _.
+			W: apply wftm_weaken_j to W2 with J = J A.
+			W: apply wfta_weaken_j to W4 with J = J A.
+			apply dcl_comp to H7 H4 _. search.
+		apply dcl_weaken to _ H4 with F = j (J (all A1)) :: nil.
+			W: case H1. W: case W1. W: case W1 (keep). W: case W4.
+			D: apply IH to _ _ H6 _. /* GEN_BY_SCRIPT 
+			D: applys IH. */  backchain exFree_tyvar.
+			D: apply dcl_comp_thm to _ _ D H4 _ with
+				JsJE = j (check (X1 n1) (A1 n1)) :: tyvar n1 :: j (J (all A1)) :: E. /* GEN_BY_SCRIPT 
+			D: applys dcl_comp_thm D H4 with
+				JsJE = j (check (X1 n1) (A1 n1)) :: tyvar n1 :: j (J (all A1)) :: E. */ 
+				W: apply wftm_weaken_j to W1 with J = J (all A1). /* GEN_BY_SCRIPT 
+				W: applys wftm_weaken_j W1 with J = J (all A1). */ 
+				W: case W6. W: case W7.
+				W: apply wfjg_subst_tyvar to _ _ _ with A = all A1. /* GEN_BY_SCRIPT 
+				W: applys wfjg_subst_tyvar with A = all A1. */ 
+				search.
+			search.
+		search.
+		apply dcl_weaken to _ H4 with F = j (J (arrow M1 M2)) :: nil.
+			W: apply wfj_weaken1 to H1. W: case H1. W: case W2.
+			W: apply wftm_anyA to W2 with A = M1.
+			W: apply mono_wfta to H5. W: case W5. apply wfta_weaken_of to W6 with A = M1.
+			apply IH to _ _ H6 _. backchain exFree_of.
+			apply dcl_comp_thm to _ _ H9 H4 _ with JsJE =
+				j (check (X1 n1) M2) :: of n1 M1 :: j (J (arrow M1 M2)) :: E.
+				W: apply wfjg_subst_tyvar to W3 _ _ with A = arrow M1 M2.
+				W: apply wftm_weaken_j to W2 with J = J (arrow M1 M2).
+				W: apply wftm_anyA to W8 with A = M1.
+				W: apply wfta_weaken_j to W6 with J = J (arrow M1 M2).
+				W: apply wfta_weaken_j to W5 with J = J (arrow M1 M2).
+				W: apply wfta_weaken_of to W10 with A = M1.
+				search.
+			search.
+		W: case H1. W: case W1. W: case W1.
+			Ts: apply chkInfApp'_sound.
+			D: apply Ts1 to _ H5. D: apply Ts2 to _ H6.
+			W: apply inf_wftm_wfta to D _ _. W: apply infApp_wftm_wfta to D1 _ _ _.
+			apply IH2 to _ _ H6 _ with J = J.
+			W: apply wftm_weaken_ty to W3.
+			w: apply wfjg_weaken_tyvar_fresh to _ _ _ W2 with FxE = x\ tyvar n1 :: tyvar x :: E.
+			apply IH1 to _ _ H5 _ with J = A1\ inferAppC A1 X2 J.
+			search.
+		% tApp bot
+		W: case H1. W: case W1 (keep). W: case W2.
+			W: apply wfta_weaken_ty to W4. /* GEN_BY_SCRIPT 
+			W: applys wfta_weaken_ty W4. */ 
+			W: apply wfjg_weaken_tyvar_fresh to _ _ _ W3 with FxE = x\ tyvar n1 :: tyvar x :: E. /* GEN_BY_SCRIPT 
+			W: applys wfjg_weaken_tyvar_fresh W3 with FxE = x\ tyvar n1 :: tyvar x :: E. */ 
+			D: apply IH1 to _ _ H6 _ with J = r\typeAppC r B J. /* GEN_BY_SCRIPT 
+			D: applys IH1 with J = r\typeAppC r B J. */ 
+			search.
+		% tApp forall
+		W: case H1. W: case W1 (keep). W: case W2.
+			W: apply wfta_weaken_ty to W4. /* GEN_BY_SCRIPT 
+			W: applys wfta_weaken_ty W4. */ 
+			W: apply wfjg_weaken_tyvar_fresh to _ _ _ W3 with FxE = x\ tyvar n1 :: tyvar x :: E. /* GEN_BY_SCRIPT 
+			W: applys wfjg_weaken_tyvar_fresh W3 with FxE = x\ tyvar n1 :: tyvar x :: E. */ 
+			D: apply IH1 to _ _ H6 _ with J = r\typeAppC r B J. /* GEN_BY_SCRIPT 
+			D: applys IH1 with J = r\typeAppC r B J. */ 
+			search.
+	intros. case H3 (keep).
+		W: apply wfj_weaken1 to H1. W: case H1. W: case W2. W: case W3.
+			W: apply mono_wfta to H6. W: apply wfta_subst_tyvar to _ W3 _.
+			apply IH2 to _ _ H5 _ with J = J. search.
+		W: case H1. W: case W1. W: case W2.
+			apply dcl_weaken to _ H4 with F = j (J C) :: nil.
+			apply IH to _ _ H5 _.
+			apply dcl_comp_thm to _ _ H8 H4 _ with JsJE = j (check X A1) :: j (J C) :: E.
+				W: apply wfjg_subst_tyvar to W3 W4 _.
+				W: apply wftm_weaken_j to W1 with J = J C.
+				W: apply wfta_weaken_j to W2 with J = J C.
+				search.
+			search.
+		W: case H1. W: case W1. W: case W2.
+			apply dcl_weaken to _ H4 with F = j (J bot) :: nil.
+			search.
+
+
+Theorem dcl_complete : forall E, wfj E -> exFree E -> dc E -> dcl E.
+induction on 3. intros. case H3. search.
+	case H1. apply exFree_weaken to H2. unfold. backchain IH.
+	case H1. apply exFree_weaken to H2. unfold. backchain IH.
+	case H1. apply exFree_weaken to H2. unfold. backchain IH.
+	W: case H1. W: apply exFree_weaken to H2.
+		backchain dcl_sub. backchain sub'_complete. backchain IH.
+	apply dcl_chkInfApp. W: case H1. W: case W1. E: apply exFree_weaken to H2.
+		backchain H6. backchain chk'_complete. backchain IH.
+	apply dcl_chkInfApp. E: apply exFree_weaken to H2.
+		W: apply wfj_weaken1 to H1. W: case H1. W: case W2.
+		D: apply inf'_complete to _ _ _ H4.
+		W: apply inf_wftm_wfta to H4 _ _.
+		backchain H7. backchain IH.
+			apply wfjg_subst_tyvar to W3 _ _. search.
+			backchain exFree_j.
+	apply dcl_chkInfApp. E: apply exFree_weaken to H2.
+		W: case H1. W: case W1.
+		D: apply infApp'_complete to _ _ _ H5.
+		W: apply infApp_wftm_wfta to H5 _ _ _.
+		backchain H9. backchain IH.
+			apply wfjg_subst_tyvar to W3 W4 _. search.
+			backchain exFree_j.
+	% typeAppC
+	Ex: apply exFree_weaken to H2. /* GEN_BY_SCRIPT 
+	% typeAppC
+	Ex: applys exFree_weaken H2. */  Ex: apply exFree_j to Ex with J = J (A B). /* GEN_BY_SCRIPT  Ex: applys exFree_j Ex with J = J (A B). */ 
+		W: case H1. W: case W1. W: case W1.
+		W: apply wfta_subst_tyvar to _ W1 W2. /* GEN_BY_SCRIPT 
+		W: applys wfta_subst_tyvar W1 W2. */ 
+		W: apply wfjg_subst_tyvar to W3 W5 _. /* GEN_BY_SCRIPT 
+		W: applys wfjg_subst_tyvar W3 W5. */ 
+		apply IH to _ _ H4. /* GEN_BY_SCRIPT 
+		applys IH. */ 
+		search.
+	Ex: apply exFree_weaken to H2. /* GEN_BY_SCRIPT 
+	Ex: applys exFree_weaken H2. */  Ex: apply exFree_j to Ex with J = J bot. /* GEN_BY_SCRIPT  Ex: applys exFree_j Ex with J = J bot. */ 
+		W: case H1. W: case W1. W: case W1.
+		W: apply wfjg_subst_tyvar to W3 _ _ with A = bot. /* GEN_BY_SCRIPT 
+		W: applys wfjg_subst_tyvar W3 with A = bot. */ 
+		apply IH to _ _ H4. /* GEN_BY_SCRIPT 
+		applys IH. */ 
+		search.

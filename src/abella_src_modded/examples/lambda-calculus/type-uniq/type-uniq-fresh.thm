@@ -1,0 +1,69 @@
+%% Type uniqueness for the simply-typed lambda-calculus
+%%
+%% This development uses an explicit freshness predicate which may be
+%% easier to understand for new users to Abella.
+
+Specification "type-uniq".
+
+Define name : tm -> prop by
+  nabla x, name x.
+
+Define fresh : tm -> o -> prop by
+  nabla x, fresh x E.
+
+Define freshlist : tm -> olist -> prop by
+  nabla x, freshlist x E.
+
+Theorem member_fresh : forall X L E,
+  member E L -> freshlist X L -> fresh X E.
+induction on 1. intros. case H1.
+  case H2. search.
+  assert freshlist X L1.
+    case H2. search.
+    apply IH to H3 H4. search.
+
+Define ctx : olist -> prop by
+  ctx nil ;
+  ctx (of X T :: L) := freshlist X L /\ ctx L.
+
+% We could define this second clause as simply
+%   Define nabla x, ctx (of x T :: L) := ctx L.
+% but it turns out that the version with fresh is much easier to reason with
+% since it does not require introducting nominal variables in most cases.
+% Moreover, we can use lemmas based on fresh rather than on nominal variables.
+
+Theorem of_name : 
+  forall L E,
+  ctx L -> member E L ->
+  exists X T, E = of X T /\ name X.
+induction on 1. intros. case H1.
+  case H2.
+  case H3. case H2.
+    search.
+    apply IH to H4 H5. search.
+
+Theorem ctx_uniq : forall L E T1 T2,
+  ctx L -> member (of E T1) L -> member (of E T2) L -> T1 = T2.
+induction on 1. intros. case H1.
+  case H2.
+  case H2.
+    case H3.
+      search.
+      apply member_fresh to H6 H4. case H7.
+    case H3.
+      apply member_fresh to H6 H4. case H7.
+      apply IH to H5 H6 H7. search.
+
+Theorem type_uniq : forall L E T1 T2,
+  ctx L -> {L |- of E T1} -> {L |- of E T2} -> T1 = T2.
+induction on 2. intros. case H2.
+  case H3.
+    apply IH to _ H4 H5. search.
+    apply of_name to H1 H6. case H7. case H5.
+  case H3.
+    apply IH to H1 H4 H6. search.
+    apply of_name to H1 H7. case H8. case H6.
+  apply of_name to H1 H5. case H6.
+   case H3. case H4. case H4.
+   apply of_name to H1 H8. case H7. case H4.
+   apply ctx_uniq to H1 H5 H8. search.

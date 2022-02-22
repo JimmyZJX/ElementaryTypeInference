@@ -1,0 +1,867 @@
+Import "nonOverlap".
+
+Type ttop   tm.
+Type tlam   (ty -> tm) -> tm.
+Type alam   (tm -> tm) -> ty -> tm.
+
+Define trans : ty -> ty -> prop by
+	trans i i;
+	nabla x, trans x x;
+	trans (all A) (all B) := nabla x, trans (A x) (B x);
+	trans (arrow A1 A2) (arrow B1 B2) := trans A1 B1 /\ trans A2 B2;
+	trans top top;
+	trans bot (all (x\ x)).
+
+Theorem trans_det : forall A B C, trans A B -> trans A C -> B = C.
+induction on 1. intros. case H1. % Manual Fix case H2; try search.
+case H2. search.
+case H2. search.
+case H2.
+	apply IH to H3 H4. /* GEN_BY_SCRIPT 
+	applys IH H4. */  search.
+case H2.
+
+	apply IH to H3 H5. /* GEN_BY_SCRIPT 
+	applys IH H3 H5. */  apply IH to H4 H6. /* GEN_BY_SCRIPT  applys IH H4 H6. */  search.
+case H2. search.
+case H2. search.
+
+Theorem trans_mono : forall E M, mono E M -> trans M M.
+induction on 1. intros. case H1. % Manual Fix try search.
+search. search.
+	apply IH to H2. /* GEN_BY_SCRIPT 
+	applys IH H2. */  apply IH to H3. /* GEN_BY_SCRIPT  applys IH H3. */  search.
+
+Theorem trans_subst : forall A A_ B B_, nabla x,
+	trans (A x) (A_ x) -> trans B B_ -> trans (A B) (A_ B_).
+induction on 1. intros. case H1. % Manual Fix try search.
+search. search. search.
+	apply IH to H3 H2. /* GEN_BY_SCRIPT 
+	applys IH H2. */  search.
+	apply IH to H3 _. /* GEN_BY_SCRIPT 
+	applys IH H3. */  apply IH to H4 _. /* GEN_BY_SCRIPT  applys IH H4. */  search. search. search.
+
+Theorem trans_subst_mono : forall E A M A_, nabla x,
+	mono E M -> trans (A x) (A_ x) -> trans (A M) (A_ M).
+induction on 2. intros. case H2. % Manual Fix try search.
+search. search. 
+	backchain trans_mono.
+	apply IH to _ H3. /* GEN_BY_SCRIPT 
+	applys IH. */  search.
+	apply IH to _ H3. /* GEN_BY_SCRIPT 
+	applys IH H3. */  apply IH to _ H4. /* GEN_BY_SCRIPT  applys IH H4. */  search. search. search.
+
+Theorem trans_prune[T] : forall A A_, nabla (x : T),
+	trans A (A_ x) -> exists Ar, A_ = x\ Ar.
+induction on 1. intros. case H1. % Manual Fix try search.
+search. search.
+	apply IH to H2. /* GEN_BY_SCRIPT 
+	applys IH. */  search.
+	apply IH to H2. /* GEN_BY_SCRIPT 
+	applys IH H2. */  apply IH to H3. /* GEN_BY_SCRIPT  applys IH H3. */  search. search. search.
+
+Define trans_env : olist -> olist -> prop by
+	trans_env nil nil;
+	nabla x, trans_env (tyvar x :: E) (tyvar x :: F) := trans_env E F;
+	nabla x, trans_env (styvar x :: E) (tyvar x :: F) := trans_env E F;
+	nabla x, trans_env (of x A :: E) (of x A_ :: F) := trans_env E F /\ trans A A_;
+	trans_env (j J :: E) (j J :: F) := trans_env E F.
+
+Theorem trans_env_member : forall E F A A_, nabla x,
+	member (of x A) (E x) -> trans A A_ -> trans_env (E x) (F x) -> member (of x A_) (F x).
+induction on 3. intros. case H3. % Manual Fix case H1.
+case H1. case H1.
+	apply IH to _ H2 H4. /* GEN_BY_SCRIPT 
+	applys IH H2. */  search.
+case H1.
+	apply IH to _ H2 H4. /* GEN_BY_SCRIPT 
+	applys IH H2. */  search.
+case H1.
+	apply IH to _ H2 H4. /* GEN_BY_SCRIPT 
+	applys IH H2. */  search.
+case H1.
+	apply trans_det to H2 H5. /* GEN_BY_SCRIPT 
+	applys trans_det H2 H5. */  search.
+	apply member_prune_tm to H6. /* GEN_BY_SCRIPT 
+	applys member_prune_tm H6. */ 
+case H1.
+	apply IH to _ H2 H4. /* GEN_BY_SCRIPT 
+	applys IH H2. */  search.
+
+Theorem trans_total : forall E A, wft E A -> exists A_, trans A A_.
+induction on 1. intros. case H1. % Manual Fix try search.
+search. search. search. search. search.
+	apply IH to H2. /* GEN_BY_SCRIPT 
+	applys IH H2. */  apply IH to H3. /* GEN_BY_SCRIPT  applys IH H3. */  search.
+	apply IH to H2. /* GEN_BY_SCRIPT 
+	applys IH H2. */  search.
+
+Theorem trans_inFV : forall E A A_, nabla a,
+	trans (A a) (A_ a) -> wft (E a) (A a) -> inFV A -> inFV A_.
+induction on 1. intros. case H1. % Manual Fix try search.
+search. search. search.
+	W: case H2.
+		apply IH to H4 _ _ with a = n1. /* GEN_BY_SCRIPT 
+		applys IH with a = n1. */  unfold. intros. case H5. apply inFV_false to _. /* GEN_BY_SCRIPT  applys inFV_false. */ 
+		unfold. intros. case H6. apply inFV_false to H5. /* GEN_BY_SCRIPT  applys inFV_false H5. */ 
+	W: case H2.
+		FVa: apply inFV_det_wft to W. /* GEN_BY_SCRIPT 
+		FVa: applys inFV_det_wft W. */ 
+		FVb: apply inFV_det_wft to W1. /* GEN_BY_SCRIPT 
+		FVb: applys inFV_det_wft W1. */ 
+		FV: case FVa.
+			apply IH to H4 _ _. /* GEN_BY_SCRIPT 
+			applys IH H4. */ 
+				unfold. intros. case H7. apply inFV_false to H6. /* GEN_BY_SCRIPT  applys inFV_false H6. */ 
+			FV: case FVb.
+				apply IH to H5 _ _. /* GEN_BY_SCRIPT 
+				applys IH H5. */ 
+					unfold. intros. case H7. apply inFV_false to H6. /* GEN_BY_SCRIPT  applys inFV_false H6. */ 
+				apply inFV_false to H3. /* GEN_BY_SCRIPT 
+				applys inFV_false H3. */ 
+	search.
+	apply inFV_false to H3. /* GEN_BY_SCRIPT 
+	applys inFV_false H3. */ 
+
+% Declarative subtyping
+Define sub_elb : olist -> ty -> ty -> tm -> prop by
+	sub_elb E i i (alam (x\ x) i);
+	sub_elb E A top (alam (x\ ttop) A_) := wft E A /\ trans A A_;
+	sub_elb E bot A (alam (x\ tApp x A_) (all (x\ x))) := wft E A /\ trans A A_;
+	nabla x, sub_elb (E x) x x (alam (x\ x) x) := nabla x, member (tyvar x) (E x);
+	nabla x, sub_elb (E x) x x (alam (x\ x) x) := nabla x, member (styvar x) (E x);
+	sub_elb E (arrow A1 A2) (arrow B1 B2)
+			(alam (f\ alam (x\ app C2 (app f (app C1 x))) B1_) (arrow A1_ A2_)) :=
+			% (f\ alam (x\ C2 (app f (C1 x))) B1) :=
+		sub_elb E B1 A1 C1 /\ sub_elb E A2 B2 C2 /\
+			trans B1 B1_ /\ trans A1 A1_ /\ trans A2 A2_;
+	sub_elb E (all A) B (alam (x\ app C (tApp x M)) (all A_)) :=
+		sub_elb E (A M) B C /\ mono E M /\ notAll_ B /\ inFV A /\ trans (all A) (all A_);
+	sub_elb E (all A) (all B) (alam (x\ tlam (a\ app (C a) (tApp x a))) (all A_)) := nabla x,
+		sub_elb (styvar x :: E) (A x) (B x) (C x) /\ inFV A /\ inFV B /\ trans (A x) (A_ x).
+
+Define chk_elb : olist -> tm -> ty -> tm -> prop,
+       inf_elb : olist -> tm -> ty -> tm -> prop,
+       infApp_elb : olist -> ty -> tm -> ty -> tm -> tm -> prop by
+	nabla x, inf_elb (E x) x A x := nabla x, member (of x A) (E x);
+	inf_elb E (anno X A) A T := chk_elb E X A T;
+	inf_elb E (tAnno X A) (all A) (tlam T) :=
+		nabla x, wft E (all A) /\ chk_elb (tyvar x :: E) (X x) (A x) (T x);
+	chk_elb E unit i unit;
+	inf_elb E unit i unit;
+	chk_elb E X top ttop := wftm E X;
+	chk_elb E X (all A) (tlam T) :=
+		nabla x, chk_elb (tyvar x :: E) X (A x) (T x) /\ wft E (all A);
+	chk_elb E (lam X) (arrow A B) (alam T A_) :=
+		nabla x, wft E A /\ chk_elb (of x A :: E) (X x) B (T x) /\ trans A A_;
+	inf_elb E (lam X) (arrow M1 M2) (alam T M1) := nabla x,
+		mono E (arrow M1 M2) /\ chk_elb (of x M1 :: E) (X x) M2 (T x);
+	inf_elb E (app X1 X2) C (app (app Co T1) T2) :=
+		exists A A_, inf_elb E X1 A T1 /\ infApp_elb E A X2 C Co T2 /\ trans A A_;
+	inf_elb E (tApp X B) bot T :=
+		wft E B /\ inf_elb E X bot T;
+	inf_elb E (tApp X B) (A B) (tApp T B_) := exists A_,
+		wft E B /\ inf_elb E X (all A) T /\ trans B B_ /\ trans (all A) (all A_);
+	chk_elb E X B (app Co T) := notAll_ B /\
+		exists A A_, inf_elb E X A T /\ sub_elb E A B Co /\ trans A A_;
+	infApp_elb E (all A) X C (alam (x\ app Co (tApp x M)) (all A_)) T :=
+		infApp_elb E (A M) X C Co T /\ mono E M /\ wft E (all A) /\ trans (all A) (all A_);
+	infApp_elb E (arrow A C) X C (alam (x\ x) (arrow A_ C_)) T :=
+		chk_elb E X A T /\ wft E C /\ trans A A_ /\ trans C C_;
+	infApp_elb E bot X bot (alam (x\ tApp x (arrow top (all (x\ x)))) (all (x\ x))) ttop :=
+		wftm E X.
+
+
+%region Check equivalence against the previous definition
+Theorem sub_elb_sound : forall E A B C,
+	sub_elb E A B C -> sub E A B.
+induction on 1. intros. case H1. % Manual Fix try search.
+search. search. search. search. search.
+	apply IH to H2. /* GEN_BY_SCRIPT 
+	applys IH H2. */  apply IH to H3. /* GEN_BY_SCRIPT  applys IH H3. */  search.
+	apply IH to H2. /* GEN_BY_SCRIPT 
+	applys IH H2. */  search.
+	apply IH to H2. /* GEN_BY_SCRIPT 
+	applys IH. */  search.
+
+Theorem sub_elb_complete : forall E A B,
+	sub E A B -> exists C, sub_elb E A B C.
+induction on 1. intros. case H1 (keep). % Manual Fix try search.
+search.
+	apply trans_total to _. /* GEN_BY_SCRIPT 
+	applys trans_total. */  search.
+	apply trans_total to _. /* GEN_BY_SCRIPT 
+	applys trans_total. */  search.
+	search. search.
+	apply IH to H2. /* GEN_BY_SCRIPT 
+	applys IH H2. */  apply IH to H3. /* GEN_BY_SCRIPT  applys IH H3. */ 
+		W: apply sub_wft to H2. /* GEN_BY_SCRIPT 
+		W: applys sub_wft H2. */  W: apply sub_wft to H3. /* GEN_BY_SCRIPT  W: applys sub_wft H3. */ 
+		Tr: apply trans_total to W. /* GEN_BY_SCRIPT 
+		Tr: applys trans_total W. */ 
+		Tr: apply trans_total to W1. /* GEN_BY_SCRIPT 
+		Tr: applys trans_total W1. */ 
+		Tr: apply trans_total to W2. /* GEN_BY_SCRIPT 
+		Tr: applys trans_total W2. */ 
+		Tr: apply trans_total to W3. /* GEN_BY_SCRIPT 
+		Tr: applys trans_total W3. */ 
+		search.
+	apply IH to H2. /* GEN_BY_SCRIPT 
+	applys IH H2. */ 
+		W: apply sub_wft to H1. /* GEN_BY_SCRIPT 
+		W: applys sub_wft H1. */  W: case W (keep).
+		Tr: apply trans_total to W. /* GEN_BY_SCRIPT 
+		Tr: applys trans_total W. */ 
+		Tr: case Tr (keep).
+		search.
+	apply IH to H2. /* GEN_BY_SCRIPT 
+	applys IH. */ 
+		W: apply sub_wft to H1. /* GEN_BY_SCRIPT 
+		W: applys sub_wft H1. */  W: case W (keep).
+		Tr: apply trans_total to W. /* GEN_BY_SCRIPT 
+		Tr: applys trans_total W. */ 
+		Tr: case Tr (keep).
+		search.
+
+Theorem typ_elb_sound :
+	(forall E X A T, chk_elb E X A T -> chk E X A) /\
+	(forall E X A T, inf_elb E X A T -> inf E X A) /\
+	(forall E A X C Co T, infApp_elb E A X C Co T -> infApp E A X C).
+induction on 1 1 1. intros. split.
+	intros. case H1 (keep). % Manual Fix try search.
+	search. search.
+		apply IH to H2. /* GEN_BY_SCRIPT 
+		applys IH. */  search.
+		apply IH to H3. /* GEN_BY_SCRIPT 
+		applys IH. */  search.
+		apply IH1 to H3. /* GEN_BY_SCRIPT 
+		applys IH1. */  apply sub_elb_sound to _. /* GEN_BY_SCRIPT  applys sub_elb_sound. */  search.
+	intros. case H1 (keep). % Manual Fix
+		search.
+		apply IH to H2. search.
+		apply IH to H3. search.
+		search.
+		apply IH to H3. search.
+		apply IH1 to H2. apply IH2 to H3. search.
+		apply IH1 to H3. search.
+		apply IH1 to H3. search.
+
+	intros. case H1 (keep). % Manual Fix
+		apply IH2 to H2. search.
+		apply IH to H2. search.
+		search.
+
+Theorem typ_elb_complete :
+	(forall E X A, chk E X A -> wfj E -> exFree E -> exists T, chk_elb E X A T) /\
+	(forall E X A, inf E X A -> wfj E -> exFree E -> exists T, inf_elb E X A T) /\
+	(forall E A X C, infApp E A X C -> wfj E -> exFree E -> exists Co T, infApp_elb E A X C Co T).
+induction on 1 1 1. intros. split.
+	intros. W: apply chk_wft to _ _ _. /* GEN_BY_SCRIPT  W: applys chk_wft. */  case H1. % Manual Fix try search.
+		search.
+		apply IH to H4 _ _. /* GEN_BY_SCRIPT 
+		applys IH. */  backchain exFree_tyvar. search.
+		W: case W.
+			apply IH to H5 _ _. /* GEN_BY_SCRIPT 
+			applys IH. */ 
+				backchain exFree_of.
+				apply wft_wfta to W. /* GEN_BY_SCRIPT 
+				applys wft_wfta W. */  search.
+			Tr: apply trans_total to W. /* GEN_BY_SCRIPT 
+			Tr: applys trans_total W. */ 
+			search.
+		apply IH1 to H5 _ _. /* GEN_BY_SCRIPT 
+		applys IH1. */ 
+			W: apply sub_wft to H6. /* GEN_BY_SCRIPT 
+			W: applys sub_wft H6. */ 
+			Tr: apply trans_total to W1. /* GEN_BY_SCRIPT 
+			Tr: applys trans_total W1. */ 
+			S: apply sub_elb_complete to _. /* GEN_BY_SCRIPT 
+			S: applys sub_elb_complete. */ 
+			search.
+	intros. W: apply inf_wft to _ _ _. /* GEN_BY_SCRIPT  W: applys inf_wft. */
+	% Manual Fix
+		case H1. search. apply IH to H4 _ _. search. apply IH to H5 _ _. backchain exFree_tyvar. search.
+		search.
+		apply IH to H5 _ _. backchain exFree_of. 
+		W: case W. apply wft_wfta to W. /* GEN_BY_SCRIPT  applys wft_wfta W. */  search. search.
+		apply IH1 to H4 _ _.
+		apply IH2 to H5 _ _. /* GEN_BY_SCRIPT 
+		applys IH2. */ 
+			W: apply inf_wft to H4 _ _. /* GEN_BY_SCRIPT 
+			W: applys inf_wft H4. */  Tr: apply trans_total to W1. /* GEN_BY_SCRIPT  Tr: applys trans_total W1. */ 
+			search.
+		apply IH1 to H5 _ _. /* GEN_BY_SCRIPT 
+		applys IH1. */ 
+		apply IH1 to H5 _ _. search.
+		apply IH1 to H5 _ _. /* GEN_BY_SCRIPT 
+		applys IH1. */ 
+			W: apply inf_wft to H5 _ _. /* GEN_BY_SCRIPT 
+			W: applys inf_wft H5. */  Tr: apply trans_total to W1. /* GEN_BY_SCRIPT  Tr: applys trans_total W1. */ 
+			Tr: case Tr (keep).
+			Tr: apply trans_total to H4. /* GEN_BY_SCRIPT 
+			Tr: applys trans_total H4. */ 
+			search.
+
+	intros. W: apply infApp_wft to _ _ _. /* GEN_BY_SCRIPT  W: applys infApp_wft. */
+	% Manual Fix
+	case H1. apply IH2 to H4 _ _.
+		Tr: apply trans_total to W. /* GEN_BY_SCRIPT 
+		Tr: applys trans_total W. */  Tr: case Tr. search.
+		apply IH to H4 _ _.
+		W: case W.
+			Tr: apply trans_total to W. /* GEN_BY_SCRIPT 
+			Tr: applys trans_total W. */  Tr: apply trans_total to W2. /* GEN_BY_SCRIPT  Tr: applys trans_total W2. */ 
+			apply IH to H4 _ _. /* GEN_BY_SCRIPT 
+			applys IH. */  search.
+		search.
+
+%endregion
+
+
+Define sub_fsub : olist -> ty -> ty -> prop by
+	sub_fsub E A A;
+	sub_fsub E A C :=
+		exists B, sub_fsub E A B /\ sub_fsub E B C /\ wft E B;
+	sub_fsub E A top := wft E A;
+	sub_fsub E (arrow A1 A2) (arrow B1 B2) :=
+		sub_fsub E B1 A1 /\ sub_fsub E A2 B2;
+	sub_fsub E (all A) (all B) :=
+		nabla x, sub_fsub (tyvar x :: E) (A x) (B x) /\ inFV A /\ inFV B.
+
+Define typ_fsub : olist -> tm -> ty -> prop by
+	typ_fsub E unit i;
+	typ_fsub E ttop top;
+	typ_fsub E X B := exists A, typ_fsub E X A /\ sub_fsub E A B;
+	nabla x, typ_fsub (E x) x A := nabla x, member (of x A) (E x);
+	typ_fsub E (alam X A) (arrow A B) := nabla x, typ_fsub (of x A :: E) (X x) B;
+	typ_fsub E (app X1 X2) B := exists A, typ_fsub E X1 (arrow A B) /\ typ_fsub E X2 A;
+	typ_fsub E (tlam X) (all B) := nabla x, typ_fsub (tyvar x :: E) (X x) (B x) /\ inFV B;
+	typ_fsub E (tApp X B) (A B) := typ_fsub E X (all A).
+
+Theorem typ_fsub_tApp_cons : forall E X A B,
+	typ_fsub E X (all A) -> typ_fsub E (tApp X B) (A B).
+search 2.
+
+Theorem sub_fsub_weaken : forall G F E GE GFE A B,
+	append G E GE -> split3 G F E GFE ->
+	sub_fsub GE A B -> sub_fsub GFE A B.
+induction on 3. intros A S S. S: case S1.
+	search.
+	S: apply IH to _ _ S1. /* GEN_BY_SCRIPT 
+	S: applys IH S1. */  S: apply IH to _ _ S2. /* GEN_BY_SCRIPT  S: applys IH S2. */ 
+		W: apply wft_weaken to _ _ S3. /* GEN_BY_SCRIPT 
+		W: applys wft_weaken S3. */  search.
+	W: apply wft_weaken to _ _ S1. /* GEN_BY_SCRIPT 
+	W: applys wft_weaken S1. */  unfold 3. search.
+	S: apply IH to _ _ S1. /* GEN_BY_SCRIPT 
+	S: applys IH S1. */  S: apply IH to _ _ S2. /* GEN_BY_SCRIPT  S: applys IH S2. */  unfold 4. search. search.
+	S: apply split3_cons to S with X = tyvar n1. /* GEN_BY_SCRIPT 
+	S: applys split3_cons S with X = tyvar n1. */ 
+		S: apply IH to _ S4 S1. /* GEN_BY_SCRIPT 
+		S: applys IH S1 S4. */  unfold 5. search.
+
+Theorem typ_fsub_weaken : forall G F E GE GFE X A,
+	append G E GE -> split3 G F E GFE ->
+	typ_fsub GE X A -> typ_fsub GFE X A.
+induction on 3. intros A S T. T: case T.
+	search. search.
+	T: apply IH to _ _ T. /* GEN_BY_SCRIPT 
+	T: applys IH. */  S: apply sub_fsub_weaken to _ _ _. /* GEN_BY_SCRIPT  S: applys sub_fsub_weaken. */  search.
+	M: apply mem_GE_GFE to _ _ T. /* GEN_BY_SCRIPT 
+	M: applys mem_GE_GFE T. */  search 2.
+	S: apply split3_cons to S with X = of n1 A1. /* GEN_BY_SCRIPT 
+	S: applys split3_cons S with X = of n1 A1. */ 
+		T: apply IH to _ S1 T. /* GEN_BY_SCRIPT 
+		T: applys IH S1. */  search 2.
+	T: apply IH to _ _ T. /* GEN_BY_SCRIPT 
+	T: applys IH T. */  T: apply IH to _ _ T1. /* GEN_BY_SCRIPT  T: applys IH T1. */  search 2.
+	S: apply split3_cons to S with X = tyvar n1. /* GEN_BY_SCRIPT 
+	S: applys split3_cons S with X = tyvar n1. */ 
+		T: apply IH to _ S1 T. /* GEN_BY_SCRIPT 
+		T: applys IH S1. */  search 2.
+	T: apply IH to _ _ T. /* GEN_BY_SCRIPT 
+	T: applys IH. */  search 2.
+
+
+Theorem sub_fsub_sty_ty : forall F E FtyE FstyE A B, nabla x,
+	append (F x) (tyvar x :: E) (FtyE x) -> append (F x) (styvar x :: E) (FstyE x) ->
+	sub_fsub (FstyE x) (A x) (B x) -> sub_fsub (FtyE x) (A x) (B x).
+induction on 3. intros A A S. S: case S.
+	search.
+	S: apply IH to _ _ S. /* GEN_BY_SCRIPT 
+	S: applys IH S. */  S: apply IH to _ _ S1. /* GEN_BY_SCRIPT  S: applys IH S1. */ 
+		apply wft_sty_ty to _ _ S2. /* GEN_BY_SCRIPT 
+		applys wft_sty_ty S2. */  search.
+	W: apply wft_sty_ty to _ _ S. /* GEN_BY_SCRIPT 
+	W: applys wft_sty_ty S. */  unfold 3. search.
+	S: apply IH to _ _ S. /* GEN_BY_SCRIPT 
+	S: applys IH S. */  S: apply IH to _ _ S1. /* GEN_BY_SCRIPT  S: applys IH S1. */  unfold 4. search. search.
+	A: assert append (tyvar n2 :: F n1) (tyvar n1 :: E) (tyvar n2 :: FtyE n1).
+		S: apply IH to A2 _ S. /* GEN_BY_SCRIPT 
+		S: applys IH A2. */  unfold 5. search.
+
+Theorem typ_fsub_sty_ty : forall F E FtyE FstyE X A, nabla x,
+	append (F x) (tyvar x :: E) (FtyE x) -> append (F x) (styvar x :: E) (FstyE x) ->
+	typ_fsub (FstyE x) (X x) (A x) -> typ_fsub (FtyE x) (X x) (A x).
+induction on 3. intros A A T. T: case T.
+	search. search.
+	S: apply sub_fsub_sty_ty to _ _ T1. /* GEN_BY_SCRIPT 
+	S: applys sub_fsub_sty_ty T1. */ 
+		T: apply IH to _ _ T. /* GEN_BY_SCRIPT 
+		T: applys IH. */  search.
+	M: apply mem_FxE_FyE to A1 A T _ _. /* GEN_BY_SCRIPT 
+	M: applys mem_FxE_FyE A1 A T. */  search 2.
+	A: assert append (of n2 (A1 n1) :: F n1) (tyvar n1 :: E) (of n2 (A1 n1) :: FtyE n1).
+		T: apply IH to A2 _ T. /* GEN_BY_SCRIPT 
+		T: applys IH A2. */  search 2.
+	T: apply IH to _ _ T. /* GEN_BY_SCRIPT 
+	T: applys IH T. */  T: apply IH to _ _ T1. /* GEN_BY_SCRIPT  T: applys IH T1. */  search 2.
+	A: assert append (tyvar n2 :: F n1) (tyvar n1 :: E) (tyvar n2 :: FtyE n1).
+		T: apply IH to A2 _ T. /* GEN_BY_SCRIPT 
+		T: applys IH A2. */  search 2.
+	T: apply IH to _ _ T. /* GEN_BY_SCRIPT 
+	T: applys IH. */  search 2.
+
+
+Define env_insert : olist -> olist -> prop by
+	env_insert E E;
+	env_insert GE E := exists G F E GFE,
+		append G E GE /\ split3 G F E GFE /\ env_insert GFE E.
+
+Set search_depth 4.
+
+Theorem sub_sound_fsub : forall E E_ A B Co A_ B_,
+	sub_elb E A B Co -> trans A A_ -> trans B B_ ->
+	trans_env E E_ -> typ_fsub E_ Co (arrow A_ B_).
+induction on 1. intros S Tr Tr TE. S: case S.
+	Tr: case Tr. Tr: case Tr1. search.
+	Tr: case Tr1. apply trans_det to *S1 Tr. /* GEN_BY_SCRIPT  applys trans_det *S1 Tr. */  search.
+	Tr: case Tr. apply trans_det to *S1 Tr1. /* GEN_BY_SCRIPT  applys trans_det *S1 Tr1. */  search.
+	Tr: case Tr. Tr: case Tr1. search.
+	Tr: case Tr. Tr: case Tr1. search.
+	Tr: case Tr. Tr: case Tr1.
+		apply trans_det to *Tr1 S2. /* GEN_BY_SCRIPT 
+		applys trans_det *Tr1 S2. */  apply trans_det to *Tr2 S4. /* GEN_BY_SCRIPT  applys trans_det *Tr2 S4. */  apply trans_det to *Tr S3. /* GEN_BY_SCRIPT  applys trans_det *Tr S3. */ 
+		T: apply IH to S _ _ _. /* GEN_BY_SCRIPT 
+		T: applys IH S. */  T: apply IH to S1 _ _ _. /* GEN_BY_SCRIPT  T: applys IH S1. */ 
+		T: apply typ_fsub_weaken to _ _ T with F = of n2 B1_ :: of n1 (arrow A1_ A2_) :: nil. /* GEN_BY_SCRIPT 
+		T: applys typ_fsub_weaken T with F = of n2 B1_ :: of n1 (arrow A1_ A2_) :: nil. */ 
+		T: apply typ_fsub_weaken to _ _ T1 with F = of n2 B1_ :: of n1 (arrow A1_ A2_) :: nil. /* GEN_BY_SCRIPT 
+		T: applys typ_fsub_weaken T1 with F = of n2 B1_ :: of n1 (arrow A1_ A2_) :: nil. */ 
+		unfold (all). right. intros.
+		unfold (all). right. intros.
+		unfold (all). right. exists A2_. search.
+	apply trans_det to *Tr S4. /* GEN_BY_SCRIPT 
+	applys trans_det *Tr S4. */ 
+		Tr: case S4.
+		Tr: apply trans_subst_mono to _ Tr. /* GEN_BY_SCRIPT 
+		Tr: applys trans_subst_mono Tr. */ 
+		T: apply IH to S _ _ _. /* GEN_BY_SCRIPT 
+		T: applys IH. */ 
+		T: apply typ_fsub_weaken to _ _ T with F = of n1 (all A_1) :: nil. /* GEN_BY_SCRIPT 
+		T: applys typ_fsub_weaken T with F = of n1 (all A_1) :: nil. */ 
+		search 5.
+	Tr: case Tr. Tr: case Tr1. apply trans_det to *S3 Tr. /* GEN_BY_SCRIPT  applys trans_det *S3 Tr. */ 
+		T: apply IH to S _ _ _. /* GEN_BY_SCRIPT 
+		T: applys IH. */  permute (n1 n2) T.
+		unfold (all). right. intros.
+		unfold (all). right. intros.
+		T: apply typ_fsub_weaken to _ _ T with F = of n1 (all B2) :: nil, G = tyvar n2 :: nil. /* GEN_BY_SCRIPT 
+		T: applys typ_fsub_weaken T with F = of n1 (all B2) :: nil, G = tyvar n2 :: nil. */ 
+		T: apply sub_elb_sound to S. /* GEN_BY_SCRIPT 
+		T: applys sub_elb_sound S. */ 
+		W: apply sub_wft to T2. /* GEN_BY_SCRIPT 
+		W: applys sub_wft T2. */  W: apply wft_sty_ty to _ _ W1. /* GEN_BY_SCRIPT  W: applys wft_sty_ty W1. */ 
+		FV: apply trans_inFV to Tr1 _ _. /* GEN_BY_SCRIPT 
+		FV: applys trans_inFV Tr1. */ 
+		search 5.
+
+
+Theorem typ_sound_fsub :
+	(
+		forall E E_ A A_ X T,
+			inf_elb E X A T -> trans A A_ -> trans_env E E_ -> typ_fsub E_ T A_
+	) /\ (
+		forall E E_ A A_ X T,
+			chk_elb E X A T -> trans A A_ -> trans_env E E_ -> typ_fsub E_ T A_
+	) /\ (
+		forall E E_ A X C A_ C_ Co T,
+			infApp_elb E A X C Co T -> trans A A_ -> trans_env E E_ -> trans C C_ ->
+				exists B, typ_fsub E_ Co (arrow A_ (arrow B C_)) /\ typ_fsub E_ T B
+	).
+induction on 1 1 1. split.
+	intros T. T: case T.
+		apply trans_prune to H1. /* GEN_BY_SCRIPT 
+		applys trans_prune H1. */  M: apply trans_env_member to _ H1 _. /* GEN_BY_SCRIPT  M: applys trans_env_member H1. */  search.
+		T: apply IH1 to T _ _. /* GEN_BY_SCRIPT 
+		T: applys IH1. */  search.
+		Tr: case H1. T: apply IH1 to T1 _ _. /* GEN_BY_SCRIPT  T: applys IH1. */ 
+			W: case T. apply trans_inFV to Tr _ _. /* GEN_BY_SCRIPT  applys trans_inFV Tr. */ 
+			search.
+		Tr: case H1. search.
+		Tr: apply trans_mono to T. /* GEN_BY_SCRIPT 
+		Tr: applys trans_mono T. */  apply trans_det to *Tr H1. /* GEN_BY_SCRIPT  applys trans_det *Tr H1. */ 
+			M: case T. Tr: apply trans_mono to M. /* GEN_BY_SCRIPT  Tr: applys trans_mono M. */  Tr: apply trans_mono to M1. /* GEN_BY_SCRIPT  Tr: applys trans_mono M1. */ 
+			T: apply IH1 to T1 _ _. /* GEN_BY_SCRIPT 
+			T: applys IH1. */  search.
+		T: apply IH to T _ _. /* GEN_BY_SCRIPT 
+		T: applys IH. */  T: apply IH2 to T1 _ _ _. /* GEN_BY_SCRIPT  T: applys IH2. */  search.
+		T: apply IH to T1 _ _. /* GEN_BY_SCRIPT 
+		T: applys IH. */  search.
+		T: apply IH to T1 _ _. /* GEN_BY_SCRIPT 
+		T: applys IH. */ 
+			Tr: case T3. Tr: apply trans_subst to Tr T2. /* GEN_BY_SCRIPT  Tr: applys trans_subst Tr T2. */  apply trans_det to *H1 Tr1. /* GEN_BY_SCRIPT  applys trans_det *H1 Tr1. */ 
+			backchain typ_fsub_tApp_cons with A = A_1.
+	intros T. T: case T.
+		case H1. search.
+		case H1. search.
+		Tr: case H1. T: apply IH1 to T _ _. /* GEN_BY_SCRIPT  T: applys IH1. */ 
+			W: case T1. apply trans_inFV to Tr _ _. /* GEN_BY_SCRIPT  applys trans_inFV Tr. */ 
+			search.
+		Tr: case H1. apply trans_det to *T2 Tr. /* GEN_BY_SCRIPT  applys trans_det *T2 Tr. */ 
+			T: apply IH1 to T1 _ _. /* GEN_BY_SCRIPT 
+			T: applys IH1. */  search.
+		T: apply IH to T1 _ _. /* GEN_BY_SCRIPT 
+		T: applys IH. */ 
+			S: apply sub_sound_fsub to T2 _ _ _. /* GEN_BY_SCRIPT 
+			S: applys sub_sound_fsub T2. */ 
+			unfold (all). right. exists A_1. split. search.
+			 search.
+	intros T T. T: case T.
+		Tr: case T1. Tr: case T4. apply trans_det to *Tr Tr1. /* GEN_BY_SCRIPT  applys trans_det *Tr Tr1. */ 
+			Tr: apply trans_subst_mono to _ Tr1. /* GEN_BY_SCRIPT 
+			Tr: applys trans_subst_mono Tr1. */ 
+			T: apply IH2 to T _ _ _. /* GEN_BY_SCRIPT 
+			T: applys IH2. */  exists B1. split.
+				T: apply typ_fsub_weaken to _ _ T1 with F = of n1 (all A_1) :: nil. /* GEN_BY_SCRIPT 
+				T: applys typ_fsub_weaken T1 with F = of n1 (all A_1) :: nil. */ 
+				search 5. search.
+		Tr: case T1. apply trans_det to *T3 Tr. /* GEN_BY_SCRIPT  applys trans_det *T3 Tr. */  apply trans_det to *T4 Tr1. /* GEN_BY_SCRIPT  applys trans_det *T4 Tr1. */ 
+			apply trans_det to *Tr1 H2. /* GEN_BY_SCRIPT 
+			applys trans_det *Tr1 H2. */ 
+			T: apply IH1 to T _ _. /* GEN_BY_SCRIPT 
+			T: applys IH1. */  search.
+		case T1. case H2. search.
+
+
+
+Define wftm_fsub : olist -> tm -> prop by
+	wftm_fsub E unit;
+	wftm_fsub E ttop;
+	nabla x, wftm_fsub (E x) x := exists A, nabla x, member (of x A) (E x);
+	wftm_fsub E (alam X A) := nabla x, wft E A /\ wftm_fsub (of x A :: E) (X x);
+	wftm_fsub E (app X Y) := wftm_fsub E X /\ wftm_fsub E Y;
+	wftm_fsub E (tlam X) := nabla a, wftm_fsub (tyvar a :: E) (X a);
+	wftm_fsub E (tApp X A) := wftm_fsub E X /\ wft E A.
+
+
+% F<: Term -> Our Term
+Define decorate : tm -> tm -> prop by
+	decorate unit unit;
+	nabla x, decorate x x;
+	decorate ttop (anno unit top);
+	decorate (tlam X) (tAnno Y A) := nabla a, decorate (X a) (Y a);
+	decorate (alam X A) (anno (lam Y) (arrow A B)) := nabla a, decorate (X a) (Y a);
+	decorate (app X1 X2) (app Y1 Y2) := decorate X1 Y1 /\ decorate X2 Y2;
+	decorate (tApp X B) (tApp Y B) := decorate X Y;
+	decorate X (anno Y A) := decorate X Y.
+
+Theorem sub_fsub_wft_theother : forall E A B,
+	sub_fsub E A B -> (wft E A -> wft E B) /\ (wft E B -> wft E A).
+induction on 1. intros S W. S: case S (keep). % Manual Fix try search.
+search.
+	split. % Manual Fix intros W.
+		intros W.
+		apply IH to S2. /* GEN_BY_SCRIPT 
+		applys IH S2. */  backchain H1.
+		intros W.
+		apply IH to S1. /* GEN_BY_SCRIPT 
+		applys IH S1. */  backchain H2.
+search.
+	apply IH to S1. /* GEN_BY_SCRIPT 
+	applys IH S1. */  apply IH to S2. /* GEN_BY_SCRIPT  applys IH S2. */ 
+		split. % Manual Fix intros W; W: case W.
+		intros W. W: case W.
+			W: apply H2 to _. /* GEN_BY_SCRIPT 
+			W: applys H2. */  W: apply H3 to _. /* GEN_BY_SCRIPT  W: applys H3. */  search.
+		intros W. W: case W.
+			W: apply H1 to _. /* GEN_BY_SCRIPT 
+			W: applys H1. */  W: apply H4 to _. /* GEN_BY_SCRIPT  W: applys H4. */  search.
+	apply IH to S1. /* GEN_BY_SCRIPT 
+	applys IH. */  split. % Manual Fix intros W; W: case W.
+		intros W. W: case W.
+		apply H1 to _. /* GEN_BY_SCRIPT 
+		applys H1. */  search.
+		intros W. W: case W.
+		apply H2 to _. /* GEN_BY_SCRIPT 
+		applys H2. */  search.
+
+Theorem typ_fsub_wft : forall E A T,
+	wfj E -> exFree E -> wftm_fsub E T -> typ_fsub E T A -> wft E A.
+induction on 4. intros E Ex WT T. T: case T. % Manual Fix try search.
+search. search.
+	apply IH to _ _ _ T. /* GEN_BY_SCRIPT 
+	applys IH. */ 
+		apply sub_fsub_wft_theother to T1. /* GEN_BY_SCRIPT 
+		applys sub_fsub_wft_theother T1. */  backchain H2.
+	W: apply wfj_of_wfta to _ _. /* GEN_BY_SCRIPT 
+	W: applys wfj_of_wfta. */ 
+		backchain exFree_wfta_wft.
+	W: case WT.
+		W: apply wft_wfta to W. /* GEN_BY_SCRIPT 
+		W: applys wft_wfta W. */ 
+		W: apply IH to _ _ _ T. /* GEN_BY_SCRIPT 
+		W: applys IH. */  backchain exFree_of.
+		W: apply wft_strenthen_of to _ _ W3. /* GEN_BY_SCRIPT 
+		W: applys wft_strenthen_of W3. */ 
+		search.
+	W: case WT.
+		W: apply IH to _ _ _ T. /* GEN_BY_SCRIPT 
+		W: applys IH T. */ 
+		W: case W2.
+		search.
+	W: case WT.
+		apply IH to _ _ _ T. /* GEN_BY_SCRIPT 
+		applys IH. */  backchain exFree_tyvar.
+		search.
+	W: case WT.
+		W: apply IH to _ _ _ T. /* GEN_BY_SCRIPT 
+		W: applys IH. */ 
+		W: apply wft_open_a to _ W2 W1. /* GEN_BY_SCRIPT 
+		W: applys wft_open_a W2 W1. */ 
+		search.
+
+
+Theorem trans_env_wft_ty : forall E E_, nabla x,
+	trans_env (E x) (E_ x) -> wft (E_ x) x -> wft (E x) x.
+induction on 1. intros. case H1. % Manual Fix try search.
+search.
+	assert wft (F n1) n1. case H2. % Manual Fix try case H4; try search.
+		case H4. search. case H4. search.
+		apply IH to H3 _. /* GEN_BY_SCRIPT 
+		applys IH. */  case H5. % Manual Fix try case H6; try search.
+			case H6. search. search.
+			case H6. search. search.
+search.
+	assert wft (F n1) n1. case H2. % Manual Fix try case H4; try search.
+		case H4. search. case H4. search.
+		apply IH to H3 _. /* GEN_BY_SCRIPT 
+		applys IH. */  case H5. % Manual Fix try case H6; try search.
+			case H6. search. search.
+			case H6. search. search.
+search.
+	assert wft (F n1) n1. case H2. % Manual Fix try case H5; try search.
+		case H5. search. case H5. search.
+		apply IH to H3 _. /* GEN_BY_SCRIPT 
+		applys IH. */  case H6. % Manual Fix try case H7; try search.
+			case H7. search. search.
+			case H7. search. search.
+	assert wft (F n1) n1. case H2. % Manual Fix try case H4; try search.
+		case H4. search. case H4. search.
+		apply IH to H3 _. /* GEN_BY_SCRIPT 
+		applys IH. */  case H5. % Manual Fix try case H6; try search.
+			case H6. search. search.
+			case H6. search. search.
+
+Theorem wft_app_trans : forall F F_ E FE F_E A,
+	append F E FE -> append F_ E F_E ->
+	trans_env F F_ ->
+	wft F_E A -> wft FE A.
+induction on 4. intros. case H4. % Manual Fix try search.
+search. search. search.
+	M: apply append_mem_inv to _ H5. /* GEN_BY_SCRIPT 
+	M: applys append_mem_inv H5. */  M: case M.
+		W: apply trans_env_wft_ty to H3 _. /* GEN_BY_SCRIPT 
+		W: applys trans_env_wft_ty H3. */ 
+			W: case W. apply append_mem to H1 _. search. % Manual Fix
+			apply append_mem to H1 _. search.
+		backchain wft_weaken_f.
+	M: apply append_mem_inv to _ H5. /* GEN_BY_SCRIPT 
+	M: applys append_mem_inv H5. */  M: case M.
+		W: apply trans_env_wft_ty to H3 _. /* GEN_BY_SCRIPT 
+		W: applys trans_env_wft_ty H3. */ 
+			W: case W. apply append_mem to H1 _. search. % Manual Fix
+			apply append_mem to H1 _. search.
+		backchain wft_weaken_f.
+	apply IH to _ _ _ H5. /* GEN_BY_SCRIPT 
+	applys IH H5. */  apply IH to _ _ _ H6. /* GEN_BY_SCRIPT  applys IH H6. */  search.
+	apply IH to _ _ _ H5 with F = tyvar n1 :: F, F_ = tyvar n1 :: F_. /* GEN_BY_SCRIPT 
+	applys IH with F = tyvar n1 :: F, F_ = tyvar n1 :: F_. */ 
+		search.
+
+
+Theorem sub_complete_fsub : forall F F_ E FE F_E A B,
+	exFree E -> wfj FE ->
+	append F E FE -> append F_ E F_E ->
+	trans_env F F_ ->
+	wft FE A -> wft FE B ->
+	wft F_E A -> wft F_E B ->
+	sub_fsub F_E A B -> sub FE A B.
+induction on 10. intros Ex E FE F_E Tr WA WB WA WB S. S: case S.
+	backchain sub_refl. 
+	S: apply IH to _ _ FE _ _ _ _ _ _ S. /* GEN_BY_SCRIPT  
+	S: applys IH S FE. */  apply wft_app_trans to _ _ Tr S2. /* GEN_BY_SCRIPT  applys wft_app_trans Tr S2. */  search.
+		S: apply IH to _ _ _ _ _ _ _ _ _ S1. /* GEN_BY_SCRIPT 
+		S: applys IH S1. */  apply wft_app_trans to _ _ Tr S2. /* GEN_BY_SCRIPT  applys wft_app_trans Tr S2. */  search.
+		backchain sub_trans.
+	search.
+	W: case WA. W: case WB. W: case WA1. W: case WB1.
+		S: apply IH to _ _ _ _ _ _ _ _ _ S. /* GEN_BY_SCRIPT 
+		S: applys IH S. */  S: apply IH to _ _ _ _ _ _ _ _ _ S1. /* GEN_BY_SCRIPT  S: applys IH S1. */ 
+		search.
+	W: case WA. W: case WB. W: case WA1. W: case WB1.
+		W: apply wft_ty_sty to _ _ *W. /* GEN_BY_SCRIPT 
+		W: applys wft_ty_sty *W. */  W: apply wft_ty_sty to _ _ *W2. /* GEN_BY_SCRIPT  W: applys wft_ty_sty *W2. */ 
+		S: apply IH to _ _ _ _ _ W W2 _ _ S with F_ = tyvar n1 :: F_, F = styvar n1 :: F. /* GEN_BY_SCRIPT 
+		S: applys IH W W2 with F_ = tyvar n1 :: F_, F = styvar n1 :: F. */ 
+		search.
+
+
+Theorem sub_fsub_all_is_all : forall E A B,
+	exFree E -> wfj E -> sub_fsub E A (all B) -> exists a, A = all a.
+induction on 3. intros E W S. S: case S.
+	search.
+	apply IH to _ _ S1. apply IH to _ _ S. search.
+	search.
+
+
+Theorem subsumption_cons_notall : forall E A B T,
+	wft E B -> sub E A B -> notAll_ B -> inf E T A -> chk E T B.
+search.
+
+
+Define expand : olist -> ty -> olist -> ty -> prop by
+	expand E A E A := notAll_ A;
+	nabla x, expand E (all A) (E' x) (A' x) := nabla x, expand (tyvar x :: E) (A x) (E' x) (A' x).
+
+Theorem expand_wft : forall E A E' A',
+	expand E A E' A' -> wft E A -> wft E' A'.
+induction on 1. intros. case H1. search.
+	case H2. apply IH to H3 _. search.
+
+Theorem expand_total : forall E A, wft E A -> exists E' A', expand E A E' A'.
+induction on 1. intros. case H1.
+	search. search. search. search. search. search.
+	apply IH to H2. search.
+
+Theorem expand_notAll : forall E A E' A', expand E A E' A' -> notAll_ A'.
+induction on 1. intros. case H1. search.
+	apply IH to H2. search.
+
+Theorem expand_mem : forall E A E' A' M, expand E A E' A' -> member M E -> member M E'.
+induction on 1. intros. case H1. search.
+	apply member_prune to H2. apply IH to H3 _ with M = Fr. search.
+
+Theorem sub_expand : forall E A B E' B',
+	sub E A B -> expand E B E' B' -> wfj E -> sub E' A B'.
+induction on 2. intros S Ex WE. Ex: case Ex (keep). search.
+	S: case S.
+		W: case S. W: apply expand_wft to _ W. search.
+		apply notAll_false to S2.
+	% forall
+		W: apply sub_wft to S.
+		apply wft_prune to W.
+		S: apply sub_sty_ty to _ _ S _.
+		permute (n1 n2) S3.
+		S: apply IH to _ Ex1 _.
+		All: apply expand_notAll to Ex.
+		M: apply expand_mem to Ex1 _.
+		search.
+
+Theorem expand_implies_chk : forall E B E' B' T,
+	expand E B E' B' -> chk E' T B' -> wft E B -> wftm E T -> chk E T B.
+induction on 1. intros Ex D W W. Ex: case Ex (keep).
+	search.
+	apply wftm_prune to W1.
+		W: apply wftm_weaken_ty to W1.
+		W: case W.
+		D: apply IH to Ex1 _ _ _.
+		search.
+
+Theorem expand_inf_implies_chk : forall E A B E' B' T,
+	expand E B E' B' -> inf E T A -> sub E' A B' -> exFree E -> wfj E -> chk E' T B'.
+induction on 1. intros Ex D S ExE WE. Ex: case Ex (keep).
+	search.
+	W: apply inf_wft to D _ _. apply wft_prune to W.
+		W: apply inf_wftm to D _ _. apply wftm_prune to W1.
+		D: apply inf_weaken_ty to D.
+		D: apply IH to Ex1 D1 S _ _.
+			backchain exFree_tyvar.
+		search.
+
+
+
+Theorem subsumption_cons : forall E A B T,
+	wft E B -> sub E A B -> inf E T A -> wfj E -> exFree E -> chk E T B.
+induction on 1. intros W S D WE ExE. W: case W.
+	search. search. search. search. search. search. S: case S (keep).
+% bot <: forall
+	S: assert sub (tyvar n1 :: E) bot (A1 n1).
+	D: apply inf_weaken_ty to D.
+	apply IH to W S2 _ _ _. backchain exFree_tyvar.
+	search.
+% false
+	apply notAll_false to S3.
+% forall <: forall
+	S: apply sub_sty_ty to _ _ S1 _.
+	W: apply sub_wft to S.
+	Ex: apply expand_total to W3.
+	S: apply sub_expand to _ _ _.
+	D: apply expand_inf_implies_chk to _ _ S5 _ _.
+	D: apply expand_implies_chk to Ex D1 _ _.
+		backchain inf_wftm.
+	search.
+
+
+Theorem typ_complete_fsub : forall E A T,
+	exFree E -> wfj E -> wft E A -> wftm_fsub E T -> typ_fsub E T A ->
+	exists X, decorate T X /\ inf E X A.
+induction on 5. intros Ex W WA WT T. T: case T (keep). % Manual Fix try search.
+search. search.
+	W: apply typ_fsub_wft to _ _ _ T1. /* GEN_BY_SCRIPT 
+	W: applys typ_fsub_wft T1. */ 
+		apply IH to _ _ _ _ T1. /* GEN_BY_SCRIPT 
+		applys IH. */ 
+		S: apply sub_complete_fsub to _ _ _ _ _ _ _ _ _ T2 with F = nil, F_ = nil. /* GEN_BY_SCRIPT 
+		S: applys sub_complete_fsub T2 with F = nil, F_ = nil. */ 
+		D: apply subsumption_cons to _ _ _ _ _.
+		search.
+search.
+	W: case WA. W: case WT.
+		T: apply IH to _ _ _ _ T1. /* GEN_BY_SCRIPT 
+		T: applys IH. */ 
+			backchain wft_weaken_of.
+			W: apply wft_wfta to W1. /* GEN_BY_SCRIPT 
+			W: applys wft_wfta W1. */  search.
+			backchain exFree_of.
+		W: apply wft_weaken_of to W2 with T = A1. /* GEN_BY_SCRIPT 
+		W: applys wft_weaken_of W2 with T = A1. */ 
+		T: apply sub_refl to W5. /* GEN_BY_SCRIPT 
+		T: applys sub_refl W5. */
+		D: apply subsumption_cons to _ _ T3 _ _.
+			backchain exFree_of.
+			W: apply wft_wfta to W1. search.
+		search.
+	W: case WT.
+		W: apply typ_fsub_wft to _ _ _ T1. /* GEN_BY_SCRIPT 
+		W: applys typ_fsub_wft T1. */  W: case W3.
+		T: apply IH to _ _ _ _ T1. /* GEN_BY_SCRIPT 
+		T: applys IH T1. */ 
+		T: apply IH to _ _ _ _ T2. /* GEN_BY_SCRIPT 
+		T: applys IH T2. */ 
+		S: apply sub_refl to W3. /* GEN_BY_SCRIPT 
+		S: applys sub_refl W3. */ 
+		D: apply subsumption_cons to _ _ T6 _ _.
+		search.
+	W: case WT. W: case WA.
+		apply IH to _ _ _ _ T1. /* GEN_BY_SCRIPT 
+		applys IH T1. */  backchain exFree_tyvar.
+		S: apply sub_refl to W2. /* GEN_BY_SCRIPT 
+		S: applys sub_refl W2. */ 
+		D: apply subsumption_cons to _ S _ _ _.
+			backchain exFree_tyvar.
+		search.
+	W: case WT. W: apply typ_fsub_wft to _ _ _ T1. /* GEN_BY_SCRIPT  W: applys typ_fsub_wft T1. */  W: case W3.
+		apply IH to _ _ _ _ T1. /* GEN_BY_SCRIPT 
+		applys IH. */ 
+		search.
